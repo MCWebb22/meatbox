@@ -23,10 +23,7 @@ public final class Main {
         // Interactive runs get a fresh world each time; "| 1" keeps it non-zero.
         long seed = headless ? FIXED_SEED : (System.nanoTime() * FIXED_SEED) | 1;
 
-        Body.init();                     // body table -> fast arrays (+ sanity checks)
-        World w = new World(seed);       // Afflictions loads itself on first use
-        w.worldInit();
-        w.popInit();
+        World w = newWorld(seed);
         Sim sim = new Sim(w);
 
         if (args.length > 1 && args[0].equals("--snapshot")) {   // test: frame -> PNG
@@ -35,5 +32,14 @@ public final class Main {
         }
         if (headless) Headless.run(w, sim, years);
         else Screen.open(w, sim);
+    }
+
+    /** Build a fresh world from a seed. Also used by the regression test. */
+    static World newWorld(long seed) {
+        Body.init();                     // body table -> fast arrays (+ sanity checks)
+        World w = new World(seed);       // Afflictions loads itself on first use
+        w.worldInit();
+        w.popInit();
+        return w;
     }
 }

@@ -35,33 +35,92 @@ final class World {
     final int[]  forage = new int[MAP_SIZE];     // standing wild food on each tile, kcal
 
     // ---- people (index 0 .. MAX_POP-1) ---------------------------------------------
-    final char[]  hp      = new char[MAX_POP * NPARTS];  // 16 parts each
-    final int[]   aff     = new int[MAX_POP * NSLOTS];   // id | part<<8 | days<<16
-    final char[]  blood   = new char[MAX_POP * 8];       // B_* below
-    final byte[]  mind    = new byte[MAX_POP * 16];      // RESERVED: mood, wants
-    final long[]  immune  = new long[MAX_POP];           // bit n = immune to aff n
+    final char[]  hp      = new char[MAX_POP * NPARTS];  // 48 organs, muscles, joints each
+    final char[]  affId   = new char[MAX_POP * NSLOTS];  // condition id (0 = empty slot)
+    final char[]  affPart = new char[MAX_POP * NSLOTS];  // body part, or bone number if ON_BONE
+    final char[]  affDays = new char[MAX_POP * NSLOTS];  // days left (acute) / so far (chronic)
+    final char[]  affSev  = new char[MAX_POP * NSLOTS];  // severity 0..10000; bit 15 = dormant phase
+    final byte[]  affN    = new byte[MAX_POP];           // slots in use
+    final char[]  blood   = new char[MAX_POP * 8];       // B_* below (stride 8 kept for v0.1 code)
+    final char[]  blood2  = new char[MAX_POP * 4];       // B2_* below: haemoglobin, glucose, BP, metabolism
+    final byte[]  mind    = new byte[MAX_POP * 16];      // RESERVED for the behaviour code
+    final long[]  immune  = new long[MAX_POP];           // bit n = immune to the n-th IMMUNE condition
     final char[]  age     = new char[MAX_POP];           // days
     final short[] preg    = new short[MAX_POP];          // >0 pregnant, <0 postpartum
     final char[]  name    = new char[MAX_POP];           // name seed
     final char[]  mother  = new char[MAX_POP];           // 0xFFFF = none
-    final char[]  lame    = new char[MAX_POP];           // parts disabled for good
-    final char[]  cap     = new char[MAX_POP];           // parts usable today
+    final char[]  father  = new char[MAX_POP];           // 0xFFFF = unknown
+    final long[]  lame    = new long[MAX_POP];           // parts disabled for good (bit = part)
+    final char[]  cap     = new char[MAX_POP];           // legacy usable-parts bits (Body.EYES, LARM...)
     final boolean[] alive = new boolean[MAX_POP];
     final byte[]  sex     = new byte[MAX_POP];
     final byte[]  x       = new byte[MAX_POP];
     final byte[]  y       = new byte[MAX_POP];
     final byte[]  konst   = new byte[MAX_POP];           // constitution 0..16
-    final byte[]  cause   = new byte[MAX_POP];           // what zeroed a vital organ
-    final byte[]  bleeder = new byte[MAX_POP];           // last thing that bled
+    final char[]  cause   = new char[MAX_POP];           // what zeroed a vital organ
+    final char[]  bleeder = new char[MAX_POP];           // last thing that bled
     final boolean[] bed   = new boolean[MAX_POP];        // bedridden today
-    final byte[]  recent  = new byte[MAX_POP];           // last serious affliction
+    final char[]  recent  = new char[MAX_POP];           // last serious affliction
     final char[]  fat     = new char[MAX_POP];           // energy reserve 0..10000 (10000 = well fed)
     final byte[]  rank    = new byte[MAX_POP];           // standing 0..255: low = fed first when short
     final char[]  warmth  = new char[MAX_POP];           // 10000 = comfortable, 0 = core cooled 7 C+
 
+    // ---- skeleton (Bones / Skeleton) ---------------------------------------------------
+    final char[]  bone     = new char[MAX_POP * Bones.NBONES]; // integrity per bone, 10000 = whole
+    final char[]  bmd      = new char[MAX_POP];          // bone mineral density, 10000 = young peak
+    final byte[]  boneStr  = new byte[MAX_POP];          // personal bone strength %, 100 normal (OI: 40)
+    final char[]  boneHurt = new char[MAX_POP];          // bones currently below 10000
+    final char[]  regInt   = new char[MAX_POP * Bones.NREG]; // worst-bone integrity per region (cached)
+    final byte[]  regCap   = new byte[MAX_POP * Bones.NREG]; // % a region can ever reach (malunion, deformity)
+    final char[]  bonePain = new char[MAX_POP];
+    final byte[]  cordLvl  = new byte[MAX_POP];          // highest spinal cord injury: 1=C1 .. 24=L5, 0 = none
+    final boolean[] boneBed = new boolean[MAX_POP];      // a broken weight-bearing bone keeps them in bed
+
+    // ---- what the body can do, and the state of mind (read by behaviour) -----------------
+    final char[]  func    = new char[MAX_POP * NFN];     // FN_* 0..10000
+    final short[] psy     = new short[MAX_POP * NPSY];   // PSY_* (mood -10000..10000, rest 0..10000)
+    final char[]  stress  = new char[MAX_POP];           // chronic stress load 0..10000
+    final char[]  immun   = new char[MAX_POP];           // immune strength today, 10000 = healthy adult
+    final byte[]  ace     = new byte[MAX_POP];           // adverse childhood experiences (bereavement < 15)
+    final byte[]  headInj = new byte[MAX_POP];           // count of brain injuries
+    final char[]  labour  = new char[MAX_POP];           // recent heavy work (chopping) 0..10000
+    final byte[]  pregFlags = new byte[MAX_POP];         // infections caught while pregnant (PF_*)
+    final byte[]  bedDays = new byte[MAX_POP];           // days in bed this month (bone loss)
+    final boolean[] doomed = new boolean[MAX_POP];       // sudden death today (cause already set)
+
+    // ---- genes (Genes) ------------------------------------------------------------------
+    final byte[]  liab    = new byte[MAX_POP * Genes.NFAM];  // heritable liability per family, 128 = average
+    final int[]   alleles = new int[MAX_POP];            // 2 bits per Mendelian gene
+
     // ---- bloodstream slots: blood[person*8 + B_xxx] ---------------------------------
     static final int B_VOL = 0, B_O2 = 1, B_PERF = 2, B_PATH = 3,
                      B_WASTE = 4, B_TEMP = 5, B_HR = 6, B_PAIN = 7;
+    // blood2[person*4 + B2_xxx]
+    static final int B2_HB = 0,    // haemoglobin, 10000 = normal (14 g/dL)
+                     B2_GLU = 1,   // glucose, hundredths of mmol/L (500 = 5.0)
+                     B2_BP = 2,    // systolic blood pressure, mmHg
+                     B2_META = 3;  // metabolic rate (thyroid), 10000 = normal
+
+    // ---- function scores: func[person*NFN + FN_xxx] (0..10000) ------------------------
+    static final int FN_MOBILITY = 0, FN_MANIP_L = 1, FN_MANIP_R = 2, FN_VISION = 3, FN_HEARING = 4,
+                     FN_STAMINA = 5, FN_COGNITION = 6, FN_SPEECH = 7, FN_WORK = 8, NFN = 9;
+    static final int FN_MANIP = 99;   // catalogue shorthand: both hands
+    // ---- psych: psy[person*NPSY + PSY_xxx] ----------------------------------------------
+    static final int PSY_MOOD = 0,       // -10000 despair .. 0 neutral .. +10000 elation
+                     PSY_ANXIETY = 1,    // 0..10000
+                     PSY_ENERGY = 2,     // motivation / fatigue, 0..10000 (8000 typical)
+                     PSY_COGNITION = 3,  // clarity right now, 0..10000
+                     PSY_IMPULSE = 4,    // 0..10000
+                     PSY_AGGRESSION = 5, // 0..10000
+                     PSY_SOCIAL = 6,     // -10000 withdrawn .. +10000 seeking company
+                     PSY_REALITY = 7,    // 0 = sound .. 10000 = fully psychotic
+                     NPSY = 8;
+    static final String[] PSY_NAME = {"mood", "anxiety", "energy", "clarity", "impulse", "aggression",
+                                      "social", "psychosis"};
+    static final String[] FN_NAME = {"walk", "L hand", "R hand", "sight", "hearing", "stamina",
+                                     "brain", "speech", "work"};
+    static final int PF_RUBELLA = 1, PF_SYPHILIS = 2;
+    static final int NBAND = 21;      // 5-year age bands for disease rates (0-4 .. 100+)
 
     // ---- free list: dead people's numbers get reused ----------------------------------
     final char[] freeStack = new char[MAX_POP];
@@ -71,7 +130,11 @@ final class World {
 
     // ---- counters -------------------------------------------------------------------------
     int menCount, menPrev, day, births, deaths, wood, burnAcc, disabledN;
-    final int[] causeCount = new int[64];
+    final int[] causeCount = new int[4096];
+    final int[] caseCount  = new int[4096];  // new cases started, by condition
+    final int[] causeAgeSum = new int[4096], causeKids = new int[4096];   // by cause: sum of ages, deaths under 15
+    final int[] fracCount  = new int[Bones.NBONES];
+    int fractures, stillbirths, suicides, miscarriages;
     final int[] ageBucket  = new int[5];     // <1, 1-14, 15-49, 50-69, 70+
     int adultAgeSum, adultDeaths, allAgeSum;
     long personDays;
@@ -89,6 +152,9 @@ final class World {
     long gatherTry, gatherGot; // today's foraging: kcal sought vs found
     int  returnQ = 65536;      // foraging return (found / sought), ~1-year running average, /65536
     final int[] seasonDeaths = new int[4];
+
+    int slotFull;              // conditions not given because all slots were taken
+    Health health;             // set by Sim
 
     final Rng rng;
     World(long seed) { rng = new Rng(seed); }
@@ -156,6 +222,7 @@ final class World {
         sex[p] = (byte) (rng.next32() & 1);
         age[p] = 0; preg[p] = 0; lame[p] = 0;
         cause[p] = 0; bleeder[p] = 0; bed[p] = false; recent[p] = 0;
+        father[p] = 0xFFFF; doomed[p] = false;
         fat[p] = FAT_NEWBORN; warmth[p] = HP_MAX;
         rank[p] = (byte) rng.below(256);
         immune[p] = 0;
@@ -163,9 +230,21 @@ final class World {
         cap[p] = 0xFFFF;
         name[p] = (char) rng.next32();                       // low 16 bits
         konst[p] = (byte) rng.below(17);
-        for (int i = 0; i < NPARTS; i++) hp[p * NPARTS + i] = HP_MAX;
-        for (int i = 0; i < NSLOTS; i++) aff[p * NSLOTS + i] = 0;
+        long absent = sex[p] == SEX_M ? Body.femaleOnly : Body.maleOnly;
+        for (int i = 0; i < NPARTS; i++) hp[p * NPARTS + i] = ((absent >>> i) & 1) != 0 ? 0 : (char) HP_MAX;
+        for (int i = 0; i < NSLOTS; i++) {
+            affId[p * NSLOTS + i] = 0; affPart[p * NSLOTS + i] = 0;
+            affDays[p * NSLOTS + i] = 0; affSev[p * NSLOTS + i] = 0;
+        }
+        affN[p] = 0;
         for (int i = 0; i < 16; i++) mind[p * 16 + i] = 0;
+        Skeleton.reset(this, p);
+        int b2 = p * 4;
+        blood2[b2 + B2_HB] = HP_MAX; blood2[b2 + B2_GLU] = 500; blood2[b2 + B2_BP] = 120; blood2[b2 + B2_META] = HP_MAX;
+        for (int i = 0; i < NFN; i++) func[p * NFN + i] = HP_MAX;
+        for (int i = 0; i < NPSY; i++) psy[p * NPSY + i] = 0;
+        stress[p] = 0; ace[p] = 0; headInj[p] = 0; labour[p] = 0; pregFlags[p] = 0; bedDays[p] = 0;
+        Genes.founder(this, p);
         int b = p * 8;
         blood[b + B_VOL] = HP_MAX;  blood[b + B_O2] = HP_MAX;  blood[b + B_PERF] = HP_MAX;
         blood[b + B_PATH] = 0;      blood[b + B_WASTE] = 0;    blood[b + B_TEMP] = 3700;
@@ -179,8 +258,10 @@ final class World {
         alive[p] = false;
         popCount--;
         deaths++;
-        causeCount[cause[p] & 0xFF]++;
+        causeCount[cause[p]]++;
         int yrs = years(age[p]);
+        causeAgeSum[cause[p]] += yrs;
+        if (yrs < 15) causeKids[cause[p]]++;
         allAgeSum += yrs;
         int bucket;
         if (yrs < 1) bucket = 0;
@@ -193,7 +274,9 @@ final class World {
         ageBucket[bucket]++;
         seasonDeaths[Climate.season(day % 365)]++;
         freeStack[freeTop++] = (char) p;
-        log(personName(p) + " died: " + Afflictions.TABLE[cause[p] & 0xFF].name + " (age " + yrs + ")");
+        if (cause[p] == Catalogue.SUICIDE.id) suicides++;
+        log(personName(p) + " died: " + Afflictions.TABLE[cause[p]].name + " (age " + yrs + ")");
+        Psych.bereave(this, p);
     }
 
     // =====================================================================================

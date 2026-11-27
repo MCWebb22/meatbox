@@ -1,37 +1,138 @@
 year    pop  births  deaths  disab  food(d/p)  wood/p  fire%  trees  fat%  harvest%  land(d/p)  gath(d/p)  return%  coldest  winter-dead
-  25     80      57      17      0        119       8    100    638    99        99        333        301       99   -13.5C            1
-  50    138     182      84      1        119       8    100   1206    99        55         58        302       99   -10.4C            1
-  75    196     334     178      2        119       8    100   1223   100       102         56        336       90   -13.6C            0
- 100    137     468     371      5        120       8    100   1284   100       123        150        354       98   -14.2C            0
- 125    206     626     460      7        119       8    100   1243   100       112         66        316       87   -16.2C            0
- 150    205     742     577     12        120       8    100   1114   100       108         55        399       83   -14.6C            2
- 175    105     827     762     14        120       8    100   1286   100       107        198        607       98   -15.8C            2
- 200     84     884     840     17        120       8    100   1361   100        79        220        418       99   -16.1C            0
- 225    135    1019     924     20        120       8    100   1319   100        55         67        294       98   -15.1C            1
- 250    128    1176    1088     23        120       8    100   1269   100        80        126        467       99    -8.3C            0
- 275    207    1351    1184     27        120       8    100   1213    99       110         70        312       90   -10.5C            1
- 300    188    1523    1375     29        120       8    100   1225   100       107         80        322       92   -19.3C            2
+  25     96      87      31      0        119       8    100    609   100        79        248        278       99   -20.2C            0
+  50    174     224      90      0        119       8    100   1178    99       121         84        301       94   -14.5C            0
+  75    206     329     163      3        119       8    100   1137   100       118         71        374       90   -13.2C            1
+ 100    108     407     339      4        120       8    100   1314   100        55         68        494       86    -8.6C            0
+ 125    112     480     408      4        120       8    100   1342   100       102        153        386       99   -13.8C            0
+ 150    150     593     483      4        119       8    100   1277   100       113         94        344       87   -12.9C            1
+ 175    197     714     557      5        119       8    100   1214   100       101         18        354       74   -10.8C            0
+ 200     58     783     765      5        120       8    100   1374   100       122        405        781       99   -16.3C            0
+ 225     79     842     803      5        120       8    100   1404   100       104        255        327       99   -17.1C            2
+ 250    115     934     859      6        120       8    100   1350   100        88        153        320       99   -14.1C            2
+ 275    177    1060     923      6        120       8    100   1263   100       122         90        320       90   -14.5C            0
+ 300    112    1182    1110      7        120       8    100   1250   100        95        169        604       99   -14.4C            0
 
-deaths by age:  <1 318  1-14 391  15-49 252  50-69 237  70+ 177
-infant deaths per 1000 births: 208
-mean age at death (all): 27   (those who reached 15): 53
-deaths by season:  winter 269  spring 568  summer 263  autumn 275
-causes of death:
-  Old age                343
-  Common cold             22
-  Influenza                6
-  Gastroenteritis         74
-  Pneumonia              318
-  Tuberculosis            42
-  Appendicitis             2
-  Measles                 17
-  Cancer                  21
-  Axe cut                  2
-  Crushed by tree         22
-  Broken leg              62
-  Birth hemorrhage        13
-  Premature birth        123
-  Birth asphyxia           9
-  Newborn sepsis          37
-  Starvation             262
-person-days simulated: 15298912
+deaths by age:  <1 271  1-14 172  15-49 291  50-69 239  70+ 137
+infant deaths per 1000 births: 229
+mean age at death (all): 31   (those who reached 15): 51
+deaths by season:  winter 253  spring 466  summer 202  autumn 189
+causes of death:                       deaths  under-15  mean age
+  Old age                                255         0        67
+  Starvation                             325       124        25
+  Suicide                                  7         0        54
+  Diabetic coma                            1         1         2
+  Fall                                     3         1        48
+  Axe cut                                  6         1        30
+  Crushed by tree                         10         0        32
+  Struck by branch                         1         0        32
+  Burn                                     6         6         2
+  Wound infection                          3         0        37
+  Common cold                              1         1         0
+  Influenza                                3         2        21
+  Gastroenteritis                        112        54        19
+  Pneumonia                              148       147         0
+  Polio                                    2         2         0
+  Measles                                  2         2         0
+  Diphtheria                               7         7         1
+  Rheumatic fever                          1         0        73
+  Chickenpox                               4         4         0
+  Cholera                                 13         6        22
+  Dysentery                               39        35         4
+  Urinary tract infection                  7         1        20
+  Pressure ulcer                          13         0        69
+  Neonatal tetanus                         6         6         0
+  Ear infection                            4         4         4
+  Heart attack                             3         0        64
+  Stroke                                   2         0        72
+  Asthma attack                            4         0        27
+  Gestational diabetes                     1         0        25
+  Chronic pancreatitis                     1         0        76
+  Lymphoma                                 2         0        51
+  Lung cancer                              1         0        71
+  Breast cancer                            1         0        33
+  Bowel cancer                             3         0        70
+  Stomach cancer                           5         0        71
+  Liver cancer                             2         0        49
+  Cervical cancer                          2         0        70
+  Womb cancer                              2         0        69
+  Ovarian cancer                           1         0        72
+  Bladder cancer                           2         0        73
+  Kidney cancer                            3         0        54
+  Oesophageal cancer                       2         0        67
+  Brain tumour                             1         0        32
+  Bone metastases                          2         0        69
+  Liver metastases                        11         0        49
+  Brain metastases                         4         0        63
+  Parkinson's dementia                     1         0        66
+  Sudden infant death                      1         1         0
+  Miscarriage                              1         0        37
+  Ectopic pregnancy                        8         0        29
+  Obstructed labour                        1         0        17
+  Birth haemorrhage                       17         0        27
+  Premature birth                          6         6         0
+  Birth asphyxia                          12        12         0
+  Newborn sepsis                          20        20         0
+  Alzheimer's disease                      9         0        69
+
+health (living: 83 adults, 29 children)
+  suicides 7 = 18.1 per 100k person-years   stillbirths 6   miscarriages 306
+  fractures 882 = 2.29 per 100 person-years   osteoporosis in women 50+: 4 of 12
+  most broken bones: L radius 67, R radius 59, L clavicle 31, R ulna 31, R clavicle 27, L ulna 20
+  mind (mean of the living): mood -8 anxiety 27 energy 58 clarity 79 impulse 31 aggression 16 social 9 psychosis 0
+  body (mean of the living): walk 89 L hand 95 R hand 93 sight 98 hearing 98 stamina 91 brain 85 speech 94 work 61
+  conditions dropped because all 16 slots were full: 438
+  by group:                    cases   now  prevalence%
+    Infectious                  241660    47
+    Injury                        6589     4
+    Heart & vessels                589    25
+    Lungs                         2464    19
+    Endocrine & metabolic          815    17
+    Digestive                     1114    17
+    Kidney & urinary               381     7
+    Blood                         2218    20
+    Cancer                         102     3
+    Bones, joints & muscles       1767    26
+    Neurological                 11114    24
+    Eyes & ears                    225    13
+    Skin                          1564    15
+    Pregnancy & reproductive       533     7
+    Nutritional                    494     2
+    Congenital & genetic           254     2
+    Mental & behavioural          8701    95
+    Emergent state               80550    24
+  commonest now (prevalence among the living):
+    Migraine                                   23   20.5%   (328 cases in run)
+    Anaemia                                    21   18.8%   (80277 cases in run)
+    Iron-deficiency anaemia                    20   17.9%   (2216 cases in run)
+    Specific phobia                            19   17.0%   (502 cases in run)
+    Intestinal worms                           15   13.4%   (3588 cases in run)
+    Tooth decay                                15   13.4%   (2379 cases in run)
+    Asthma                                     15   13.4%   (231 cases in run)
+    Major depressive disorder                  15   13.4%   (842 cases in run)
+    High blood pressure                        12   10.7%   (168 cases in run)
+    Varicose veins                             12   10.7%   (136 cases in run)
+    Eczema                                     12   10.7%   (846 cases in run)
+    Insomnia disorder                          12   10.7%   (565 cases in run)
+    Generalised anxiety disorder               11    9.8%   (387 cases in run)
+    Common cold                                 8    7.1%   (144385 cases in run)
+    Gallstones                                  7    6.3%   (75 cases in run)
+    Irritable bowel syndrome                    7    6.3%   (239 cases in run)
+    Persistent depressive disorder              7    6.3%   (137 cases in run)
+    Underactive thyroid                         5    4.5%   (92 cases in run)
+    Tinnitus                                    5    4.5%   (67 cases in run)
+    Uterine fibroids                            5    4.5%   (26 cases in run)
+    Panic disorder                              5    4.5%   (135 cases in run)
+    Prolonged grief disorder                    5    4.5%   (779 cases in run)
+    Sleep apnoea                                4    3.6%   (42 cases in run)
+    Goitre                                      4    3.6%   (153 cases in run)
+    Kidney stone disease                        4    3.6%   (30 cases in run)
+  mental & behavioural, cases in run:
+    Major depressive disorder 842   Persistent depressive disorder 137   Bipolar disorder 15   Manic episode 123
+    Bipolar depression 178   Generalised anxiety disorder 387   Panic disorder 135   Social anxiety disorder 53
+    Specific phobia 502   Post-traumatic stress disorder 59   Obsessive-compulsive disorder 13   Schizophrenia 2
+    Psychotic episode 21   Postpartum depression 190   Postpartum psychosis 6   Grief 4234
+    Prolonged grief disorder 779   Post-traumatic stress (bereavement) 141   Insomnia disorder 565   ADHD 74
+    Autism 10   Tourette syndrome 3   Conduct disorder 129   Antisocial personality disorder 49
+    Borderline personality disorder 28   Anorexia nervosa 2   Alzheimer's disease 19   Vascular dementia 1
+    Chronic fatigue syndrome 4
+person-days simulated: 14085549

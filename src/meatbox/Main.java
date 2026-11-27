@@ -36,7 +36,8 @@ public final class Main {
 
     /** Build a fresh world from a seed. Also used by the regression test. */
     static World newWorld(long seed) {
-        Body.init();                     // body table -> fast arrays (+ sanity checks)
+        Body.init();                     // body + bone tables -> fast arrays (+ sanity checks)
+        Catalogue.init();                // every condition registered and pre-summed
         World w = new World(seed);       // Afflictions loads itself on first use
         w.worldInit();
         w.popInit();

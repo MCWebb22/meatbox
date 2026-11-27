@@ -23,7 +23,7 @@ public final class ShortageTest {
                 sim.day();
                 if (d > 50 * 365) { min = Math.min(min, w.popCount); max = Math.max(max, w.popCount); }
             }
-            starved += w.causeCount[Afflictions.STARVATION.id];
+            starved += w.causeCount[Catalogue.STARVATION.id];
             System.out.printf("seed %2d: population after year 50 ranged %d..%d%n", k, min, max);
             if (min == 0) { System.out.println("  FAIL: died out"); fails++; }
         }
@@ -33,9 +33,9 @@ public final class ShortageTest {
         World w = Main.newWorld(Main.FIXED_SEED);
         Sim sim = new Sim(w);
         for (int d = 0; d < 30 * 365; d++) sim.day();
-        int before = w.causeCount[Afflictions.HYPOTHERMIA.id];
+        int before = w.causeCount[Catalogue.HYPOTHERMIA.id];
         for (int d = 0; d < 5 * 365; d++) { w.wood = 0; w.burnAcc = 0; sim.day(); }
-        int cold = w.causeCount[Afflictions.HYPOTHERMIA.id] - before;
+        int cold = w.causeCount[Catalogue.HYPOTHERMIA.id] - before;
         System.out.println("hypothermia deaths in 5 winters without firewood: " + cold);
         if (cold < 10) { System.out.println("  FAIL: cold without fire should kill"); fails++; }
 

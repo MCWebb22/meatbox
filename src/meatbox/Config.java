@@ -25,7 +25,7 @@ final class Config {
     static final int MAP_SIZE   = MAP_W * MAP_H;
     static final int START_POP  = 40;
     static final int HP_MAX     = 10000;    // 100.00 %
-    static final int NSLOTS     = 8;        // afflictions carried at once
+    static final int NSLOTS     = 16;       // conditions carried at once (chronic ones pile up with age)
     static final int USABLE_HP  = 2500;     // a part under 25 % can't be used
 
     // --- ageing --------------------------------------------------------------
@@ -165,6 +165,36 @@ final class Config {
                       T_TREE = 4, T_STUMP = 5;
 
     static final int SEX_F = 0, SEX_M = 1;
+
+    // --- health: the world around the body ([hook] = knobs for experiments) -------------
+    // Exposures a society or place sets, 0..10000. Several illnesses NEED one to exist
+    // at all (no alcohol = no alcohol use disorder). Change these to model a different
+    // place or era; the defaults are a pre-modern temperate village [guess].
+    static final int ALCOHOL       = 0;      // [hook] how available alcohol is
+    static final int OPIATES       = 0;      // [hook] opium / other addictive drugs
+    static final int TOBACCO       = 0;      // [hook] share of adults smoking tobacco
+    static final int INDOOR_SMOKE  = 4000;   // [guess] open hearths, no chimney
+    static final int SALT          = 3000;   // [hook] 5000 = modern salt intake (hypertension x1)
+    static final int OBESITY       = 0;      // [hook] until the food model tracks body fat type
+    static final int WATER_CONTAM  = 3000;   // [guess] stream water, no sewage system
+    static final int MOSQUITO      = 0;      // [hook] malaria vectors (0 = temperate)
+    static final int RODENTS       = 0;      // [hook] plague-carrying rats and fleas
+    static final int ANIMALS       = 300;    // [guess] rabid animal bites
+    static final int SUNLIGHT      = 9000;   // [guess] outdoor life: little vitamin D lack
+    static final int UV            = 4000;   // [guess] sun damage to skin and eyes
+    static final int IODINE        = 7000;   // [guess] inland soils are often iodine-poor
+    static final int SEX_ACTIVE_MIN = 16, SEX_ACTIVE_MAX = 50;
+    static final int SICKLE_Q_PERMILLE = 0;  // [hook] HbS allele frequency; ~100+ where malaria is endemic
+
+    // --- health: thresholds and rates [tune unless marked] -------------------------------
+    static final int STRESS_DECAY_SH  = 7;    // stress load falls by 1/128 a day (half-life ~3 months)
+    static final int SUICIDE_BASE     = 600; // per 100k per year at the worst mood [tune]
+    static final int SUICIDE_MOOD     = -4000;// below this mood, risk starts
+    static final int OSTEO_BMD        = 7000; // [src] WHO: T-score -2.5 ~ 25-30% below peak
+    static final int HB_ANAEMIA       = 7500; // Hb under 75% of normal (~10.5 g/dL)
+    static final int GLU_DAMAGE       = 800;  // [src~] above ~8 mmol/L glucose slowly damages vessels
+    static final int GLU_COMA         = 3000; // [src~] ~30 mmol/L: diabetic ketoacidosis
+    static final int BP_DAMAGE        = 140;  // [src] systolic 140+ = hypertension (WHO)
 
     // --- display -------------------------------------------------------------------------
     static final int   FRAME_MS = 50;

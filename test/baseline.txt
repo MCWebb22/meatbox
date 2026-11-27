@@ -78,8 +78,8 @@ health (living: 83 adults, 29 children)
   suicides 7 = 18.1 per 100k person-years   stillbirths 6   miscarriages 306
   fractures 882 = 2.29 per 100 person-years   osteoporosis in women 50+: 4 of 12
   most broken bones: L radius 67, R radius 59, L clavicle 31, R ulna 31, R clavicle 27, L ulna 20
-  mind (mean of the living): mood -8 anxiety 27 energy 58 clarity 79 impulse 31 aggression 16 social 9 psychosis 0
-  body (mean of the living): walk 89 L hand 95 R hand 93 sight 98 hearing 98 stamina 91 brain 85 speech 94 work 61
+  mind (mean of the living): mood -8 anxiety 27 energy 60 clarity 79 impulse 31 aggression 16 social 9 psychosis 0
+  body (mean of the living): walk 89 L hand 95 R hand 93 sight 98 hearing 98 stamina 91 brain 85 speech 94 work 63
   conditions dropped because all 16 slots were full: 438
   by group:                    cases   now  prevalence%
     Infectious                  241660    47

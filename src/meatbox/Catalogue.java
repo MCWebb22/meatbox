@@ -332,7 +332,7 @@ final class Catalogue {
         .rate(10000).needs(CH_LATEPREG).gene(G_METAB, 2).on(PANCREAS).lasts(90, 30).blood(B2_GLU, 400).effects(QUIET));
     static final Aff HYPOTHY = add(new Aff("Underactive thyroid", DISEASE)  // [src~] ~3.5/1000/yr women
         .rate(80).women(5).doubles(20, 50).gene(G_AUTOIMM, 3).risk(CH_IODINE_DEF, 5)
-        .on(THYROID).chronic().blood(B2_META, -3000).psy(PSY_MOOD, -1500).psy(PSY_ENERGY, -2500)
+        .on(THYROID).chronic().blood(B2_META, -3000).psy(PSY_MOOD, -1500).psy(PSY_ENERGY, -1000)
         .psy(PSY_COGNITION, -1000).fert(60));
     static final Aff HYPERTHY = add(new Aff("Overactive thyroid", DISEASE)  // Graves
         .rate(25).women(5).ages(15, 80).gene(G_AUTOIMM, 3).on(THYROID).chronic().remits(10000)
@@ -568,7 +568,7 @@ final class Catalogue {
         .on(SPINE_J).chronic().remits(20000).pain(25).fn(FN_MOBILITY, 1000));
     static final Aff FIBRO = add(new Aff("Fibromyalgia", DISEASE)
         .rate(100).women(4).ages(20, 70).risk(CH_STRESS, 2).risk(CH_ACE, 2)
-        .on(CORE_M).chronic().pain(25).psy(PSY_ENERGY, -3000).psy(PSY_COGNITION, -1000));
+        .on(CORE_M).chronic().pain(25).psy(PSY_ENERGY, -2000).psy(PSY_COGNITION, -1000));
     static final Aff CARPAL = add(new Aff("Carpal tunnel syndrome", DISEASE)
         .rate(300).women(3).ages(25, 80).risk(CH_LABOUR, 2).risk(CH_PREGNANT, 2).after("Underactive thyroid", 2)
         .on(L_WRIST, R_WRIST).chronic().remits(20000).pain(15).fn(FN_MANIP, 1500).effects(QUIET));
@@ -849,7 +849,7 @@ final class Catalogue {
         .psy(PSY_ANXIETY, 4000).psy(PSY_MOOD, -2500).psy(PSY_SOCIAL, -2000).stress(4));
     static final Aff INSOMNIA = add(new Aff("Insomnia disorder", DISEASE)  // [src~] ~10% chronic insomnia
         .rate(1500).doubles(30, 40).ages(12, 120).women(1.4).risk(CH_STRESS, 4).risk(CH_PAIN, 3)
-        .on(BRAIN).chronic().remits(15000).psy(PSY_ENERGY, -3000).psy(PSY_MOOD, -1500)
+        .on(BRAIN).chronic().remits(15000).psy(PSY_ENERGY, -1500).psy(PSY_MOOD, -1500)
         .psy(PSY_COGNITION, -1500).stress(2).effects(QUIET));
     static final Aff AUD = add(new Aff("Alcohol use disorder", DISEASE)    // needs alcohol (Config.ALCOHOL)
         .rate(1500).men(3).ages(12, 120).needs(CH_ALCOHOL).gene(G_EXTERNAL, 4).risk(CH_STRESS, 3)

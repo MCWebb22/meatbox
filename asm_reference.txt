@@ -1,0 +1,36 @@
+year   25  pop   109  births    102  deaths     33  disabled    1  wood      0
+year   50  pop   244  births    349  deaths    145  disabled    4  wood      0
+year   75  pop   457  births    757  deaths    340  disabled   11  wood      0
+year  100  pop   808  births   1427  deaths    659  disabled   19  wood      0
+year  125  pop  1418  births   2709  deaths   1331  disabled   37  wood      0
+year  150  pop  2582  births   5000  deaths   2458  disabled   67  wood      0
+year  175  pop  4095  births   8386  deaths   4331  disabled  123  wood      0
+year  200  pop  4096  births  10007  deaths   5951  disabled  165  wood      0
+year  225  pop  4094  births  12578  deaths   8524  disabled  225  wood      0
+year  250  pop  4096  births  15474  deaths  11418  disabled  282  wood      0
+year  275  pop  4094  births  17487  deaths  13433  disabled  332  wood      0
+year  300  pop  4095  births  20129  deaths  16074  disabled  403  wood      0
+
+deaths by age:  <1 4141  1-14 3396  15-49 934  50-69 4398  70+ 3205
+infant deaths per 1000 births: 205
+mean age at death (all): 34   (those who reached 15): 64
+causes of death:
+  Old age               7027
+  Common cold            190
+  Influenza               99
+  Gastroenteritis        135
+  Pneumonia             4544
+  Tuberculosis           778
+  Appendicitis            23
+  Stroke                   5
+  Heart attack            16
+  Measles                142
+  Cancer                 385
+  Crushed by tree          2
+  Broken leg               4
+  Birth hemorrhage       341
+  Premature birth       1826
+  Birth asphyxia         191
+  Newborn sepsis         366
+person-days simulated: 257035431
+elapsed ms: 10752

@@ -17,8 +17,11 @@ import static meatbox.World.*;
  *  that is expected. It only proves the PORT; after that, the Java is the boss.
  *
  *  A person's day (update):
- *    1 age   2 afflictions   3 bloodstream   4 body   5 capability + pain
- *    6 pregnancy   7 new disease?   8 action   9 death check
+ *    1 age   2 afflictions   2b food + cold   3 bloodstream   4 body
+ *    5 capability + pain   6 pregnancy   7 new disease?   8 action   9 death check
+ *
+ *  v0.2: seasons, wild food, a shared food store, firewood heating, and what
+ *  hunger and cold do to the body. Parity with meatbox.asm is gone from here on.
  */
 final class Sim {
     final World w;
@@ -31,16 +34,49 @@ final class Sim {
     // =====================================================================================
     void day() {
         w.day++;
-        treeTick();
+        int doy = w.day % 365;
 
-        // firewood: each person burns 1/365 of a log per day. Keep the leftover
-        // fraction in burnAcc so nothing is lost to rounding.
-        int acc = w.burnAcc + w.popCount;
-        while (acc >= 365) {
-            acc -= 365;
-            if (w.wood > 0) w.wood--;
+        // ---- season & weather ----
+        if (doy == 60) {                                       // early March: this year's luck
+            w.harvestPct = rng.below(FAMINE_YEAR_IN) == 0 ? FAMINE_PCT
+                         : HARVEST_MIN + rng.below(HARVEST_RNG + 1);
         }
-        w.burnAcc = acc;
+        w.anomaly = w.anomaly * WEATHER_KEEP / 8 + rng.below(2 * WEATHER_KICK + 1) - WEATHER_KICK;
+        w.outT = Climate.MEAN[doy] + w.anomaly;
+
+        // yesterday's foraging return, folded into a ~6-month running average
+        if (w.gatherTry > 0) {
+            int r = (int) (w.gatherGot * 65536 / w.gatherTry);
+            w.returnQ += (r - w.returnQ) / 180;
+        }
+        w.gatherTry = w.gatherGot = 0;
+
+        treeTick();
+        Food.growDay(w);
+
+        // ---- the fire: cooking all year, heating when the hut is colder than comfort.
+        // Wood is in loads; burnAcc holds the hundredths of a load left over.
+        int heatDef = Math.max(0, COLD_COMFORT - (w.outT + SHELTER_BONUS));      // hundredths C
+        long burn = (long) w.popCount * (BURN_COOK * 100 + BURN_HEAT * heatDef) / 100;
+        long have = (long) w.wood * 100 + w.burnAcc;
+        if (have >= burn) { have -= burn; w.fireQ = 65536; }
+        else { w.fireQ = burn == 0 ? 65536 : (int) (have * 65536 / burn); have = 0; }
+        w.wood = (int) (have / 100);
+        w.burnAcc = (int) (have % 100);
+
+        // ---- the store: some spoils; today's ration = store / yesterday's demand
+        w.food -= w.food / STORE_SPOIL;
+        // Under RATION_DAYS left, everyone tightens their belt to stretch it.
+        w.foodQ = w.demandPrev == 0 ? 65536
+                : (int) Math.min(65536, w.food * 65536 / (w.demandPrev * RATION_DAYS));
+        long secure = (long) w.popCount * RATION * STORE_DAYS * STORE_FERTILE_PCT / 100;
+        int fq = secure == 0 ? 65536 : (int) Math.min(65536, w.food * 65536 / secure);
+        int rpct = w.returnQ * 100 / 65536;
+        int rq = rpct >= RETURN_FERTILE_HI ? 65536 : rpct <= RETURN_FERTILE_LO ? 0
+               : (rpct - RETURN_FERTILE_LO) * 65536 / (RETURN_FERTILE_HI - RETURN_FERTILE_LO);
+        w.fertQ = Math.min(fq, rq);
+        w.demandPrev = w.demand;
+        w.demand = 0;
 
         w.menPrev = w.menCount;          // "is there a man?" uses YESTERDAY's count
         w.menCount = 0;
@@ -75,7 +111,7 @@ final class Sim {
             } else if (tile == T_STUMP) {
                 long r = rng.next32();
                 if (r >= ROT_P32) continue;
-                map[i] = (r & 1) != 0 ? T_SEED : T_GRASS;                    // resprout or rot
+                map[i] = (r & 0xFFFF) % 100 < COPPICE_PCT ? T_SAPLING : T_GRASS;  // resprout or rot
             } else {                                                          // seed/sapling/young
                 if (rng.next32() < GROW_P32) map[i]++;
             }
@@ -172,6 +208,47 @@ final class Sim {
             if (drv != 0 && sev >= SERIOUS_SEV) w.recent[p] = (byte) drv;
         }
 
+        // ---- 2b. FOOD AND COLD -----------------------------------------------------
+        // Cold: how far the hut is below comfort, minus whatever the fire covers.
+        int coldDef = Math.max(0, COLD_COMFORT - (w.outT + SHELTER_BONUS));
+        coldDef -= (int) (((long) coldDef * w.fireQ) >>> 16);
+
+        int need = Food.baseNeed(w, p, years);
+        need += need * NEED_COLD_PCT * coldDef / 10000;        // shivering burns food
+        int fat = w.fat[p];
+        if (fat < FAT_IMMUNE)                                  // metabolism slows when starving
+            need -= need * NEED_THRIFT_PCT * (FAT_IMMUNE - fat) / (100 * FAT_IMMUNE);
+        int want = fat < HP_MAX ? need + need * REFEED_PCT / 100 : need;
+        int ate;
+        int mom = w.mother[p];
+        if (years < 1 && mom != 0xFFFF && w.alive[mom]) {      // breastfed: mother eats for both
+            int milkQ = w.foodQ;
+            if (w.fat[mom] < FAT_MILK) milkQ = milkQ * w.fat[mom] / FAT_MILK;
+            ate = (int) (((long) want * milkQ) >>> 16);
+        } else {
+            w.demand += want;
+            int q = w.foodQ;                                   // short rations aren't shared equally
+            if (q < 65536) q = Math.max(0, Math.min(65536, 2 * q - ((w.rank[p] & 0xFF) << 8)));
+            ate = (int) Math.min(w.food, ((long) want * q) >>> 16);
+            w.food -= ate;
+            w.eaten += ate;
+            if (years < 1) ate = ate * ORPHAN_MILK_PCT / 100;   // no milk: a poor substitute
+        }
+        int bal = ate - need, resDays = Food.reserveDays(years) * (24 + w.konst[p]) / 32;
+        if (bal >= 0) fat += bal * REFEED_EFF * (HP_MAX / 100) / (need * resDays);
+        else fat += bal * HP_MAX / (need * resDays);
+        fat = Math.max(0, Math.min(HP_MAX, fat));
+        w.fat[p] = (char) fat;
+        if (fat < FAT_HUNGER_PAIN) painSum += (FAT_HUNGER_PAIN - fat) / 100;
+
+        // How much the core cools: babies 3x, toddlers 2x, the old 1.5x; thin people
+        // up to 2x (no insulation, no fuel to shiver with); constitution +-25 %.
+        int ageQ = years < 1 ? 12 : years < 5 ? 8 : years < 15 ? 5 : years >= 70 ? 6 : 4;
+        long drop = (long) coldDef * COLD_K_ADULT * ageQ / 400;
+        drop = drop * (HP_MAX - Math.min(fat, 5000)) / 5000;
+        drop = drop * (24 + w.konst[p]) / 32;
+        w.warmth[p] = (char) Math.max(0, HP_MAX - drop * HP_MAX / 700);
+
         // ---- 3. BLOODSTREAM ------------------------------------------------------
         int vol = Math.min(HP_MAX, blood[bb + B_VOL] + VOL_REGEN);
         blood[bb + B_VOL] = (char) vol;
@@ -186,11 +263,14 @@ final class Sim {
         int path = blood[bb + B_PATH];
         if (path != 0) {
             path += path >>> PATH_GROWTH_SH;                   // infection grows...
-            path = Math.max(0, path - immuneStrength(years));  // ...immune system clears
+            int imm = immuneStrength(years);
+            if (fat < FAT_IMMUNE) imm = imm * (40 + 60 * fat / FAT_IMMUNE) / 100;  // [src] malnutrition
+            path = Math.max(0, path - imm);                    // ...immune system clears
             path = Math.min(HP_MAX, path);
             blood[bb + B_PATH] = (char) path;
         }
         int temp = Math.min(4300, (path >>> 3) + 3700);        // fever
+        temp = (int) Math.max(2000, temp - drop);              // cold
         blood[bb + B_TEMP] = (char) temp;
 
         int clear = ((hp[hb + KIDNEY] * 2 + hp[hb + LIVER]) * perf) / (100 * HP_MAX);
@@ -200,8 +280,8 @@ final class Sim {
 
         int hr = years < 1 ? 130 : years < 10 ? 95 : 75;
         hr += (HP_MAX - vol) >>> 6;
-        hr += (temp - 3700) >>> 4;
-        blood[bb + B_HR] = (char) Math.min(220, hr);
+        hr += (temp - 3700) >> 4;                              // fever up, hypothermia down
+        blood[bb + B_HR] = (char) Math.max(20, Math.min(220, hr));
 
         // SYSTEMIC STRESS: "the blood is failing the organs", one number
         int stress = 0;
@@ -209,6 +289,8 @@ final class Sim {
         if (path > SEPSIS_T) stress += path - SEPSIS_T;        // sepsis
         if (waste > UREMIA_T) stress += (waste - UREMIA_T) >>> 1;  // toxins
         if (temp > HEAT_T) stress += (temp - HEAT_T) << 2;     // heat
+        int coldStress = temp < HYPO_T ? (HYPO_T - temp) << 1 : 0;   // hypothermia [tune]
+        stress += coldStress;
         stress = Math.min(16383, stress);
 
         // ---- 4. BODY: heal, age, suffer the stress -------------------------------
@@ -216,14 +298,24 @@ final class Sim {
         int over = years - ((w.konst[p] & 0xFF) + SEN_ONSET - 8);
         if (over > 0) sen = Math.min(0xFFFF, (over * over) >>> SEN_SHIFT);
         final int stress4 = stress * 4;
+        final int healPct = fat >= FAT_HEAL ? 100 : 25 + 75 * fat / FAT_HEAL;   // hungry heal slowly
         for (int k = 0; k < NPARTS; k++) {
             int h = hp[hb + k];
             if (h == 0) continue;                              // lost stays lost
-            h += REGEN[k];
+            h += REGEN[k] * healPct / 100;
             if (AGEING[k] != 0) h = Math.max(0, h - sen);
             h = Math.max(0, h - ((stress4 * O2X64[k]) >>> 16)); // = stress * o2 / 256
             hp[hb + k] = (char) Math.min(HP_MAX, h);
         }
+        if (fat < FAT_WASTING) {                               // [tune] reserve gone: wasting
+            int s = ageScale(FAT_WASTING - fat, years);        // 0..1000, children x2-4
+            hurt(p, HEART,  s * 3 / 10, STARVATION.id);        // cardiac wasting, arrhythmia
+            hurt(p, TORSO,  s / 5,      STARVATION.id);        // muscle
+            hurt(p, INTEST, s * 3 / 20, STARVATION.id);        // gut lining
+            hurt(p, LIVER,  s / 10,     STARVATION.id);
+        }
+        if (temp < HYPO_HEART_T)                               // [tune] cold heart misfires
+            hurt(p, HEART, HYPO_HEART_T - temp, HYPOTHERMIA.id);
 
         // ---- 5. CAPABILITY + PAIN ---------------------------------------------------
         int usable = 0, painParts = 0;
@@ -238,7 +330,8 @@ final class Sim {
 
         int pain = Math.min(HP_MAX, (painParts >>> PAIN_SHIFT) + painSum * PAIN_AFF_SCALE);
         blood[bb + B_PAIN] = (char) pain;
-        w.bed[p] = bedAff || pain >= PAIN_BED || perf < BED_PERF || temp >= BED_TEMP;
+        w.bed[p] = bedAff || pain >= PAIN_BED || perf < BED_PERF || temp >= BED_TEMP
+                 || temp < HYPO_BED_T || fat < FAT_BED;
 
         // ---- 6. PREGNANCY ---------------------------------------------------------------
         int pr = w.preg[p];
@@ -248,7 +341,8 @@ final class Sim {
         } else if (pr < 0) {
             w.preg[p] = (short) (pr + 1);                       // breastfeeding pause
         } else if (w.sex[p] == SEX_F && years >= FERTILE_MIN && years <= FERTILE_MAX
-                   && w.menPrev != 0 && rng.next32() < CONCEIVE_P32) {
+                   && w.menPrev != 0 && fat > FAT_FERTILE_LO
+                   && rng.next32() < conceiveP32(fat)) {
             w.preg[p] = GESTATION_DAYS;
         }
 
@@ -273,7 +367,9 @@ final class Sim {
                 // indirect death: blame the worst active affliction; else "Old age"
                 // if old; else the last serious illness; else "Organ failure".
                 int c;
-                if (sev >= SERIOUS_SEV) c = drv;
+                if (coldStress * 2 > stress) c = HYPOTHERMIA.id;   // mostly the cold
+                else if (sev >= SERIOUS_SEV) c = drv;
+                else if (fat == 0) c = STARVATION.id;
                 else if (years >= OLD_AGE_YEARS) c = OLDAGE.id;
                 else if (w.recent[p] != 0) c = w.recent[p];
                 else c = ORGANFAIL.id;
@@ -281,6 +377,14 @@ final class Sim {
             }
             w.kill(p);
         }
+    }
+
+    /** Hungry women conceive less: full chance above FAT_FERTILE_HI, none at FAT_FERTILE_LO;
+     *  and fewer when the store is low (w.fertQ). */
+    long conceiveP32(int fat) {
+        long c = (CONCEIVE_P32 * w.fertQ) >>> 16;
+        if (fat >= FAT_FERTILE_HI) return c;
+        return c * (fat - FAT_FERTILE_LO) / (FAT_FERTILE_HI - FAT_FERTILE_LO);
     }
 
     /** Babies get hit 4x as hard, toddlers 2x. */
@@ -405,12 +509,22 @@ final class Sim {
                 if (Integer.compareUnsigned(ny, MAP_H) >= 0) continue;
                 int i = ny * MAP_W + nx;
                 if (w.map[i] == T_TREE) {
-                    w.map[i] = T_STUMP;
-                    w.wood++;
+                    if (rng.next32() < CLEAR_P32) w.map[i] = T_STUMP;   // stand used up
+                    w.wood += CHOP_YIELD;
                     rollTrigger(p, CHOP, false, years);        // axe accidents
                     return;
                 }
             }
+        }
+
+        // ---- forage (v0.2): only while the store is below target ----
+        boolean foraging = false;
+        if (years >= GATHER_AGE
+                && w.food < (long) w.popCount * RATION * STORE_DAYS
+                && w.blood[p * 8 + B_PAIN] < PAIN_WORK
+                && (c & ARMS) != 0) {
+            Food.forageAct(w, p, years, c);
+            foraging = true;
         }
 
         // ---- walk ----
@@ -425,11 +539,14 @@ final class Sim {
             long r = rng.next32();
             if ((r & (legs == 1 ? 1 : 3)) != 0) return;
         }
-        int dx = rng.below(3) - 1;
-        int dy = rng.below(3) - 1;
-        int nx = (w.x[p] & 0xFF) + dx, ny = (w.y[p] & 0xFF) + dy;
-        if (Integer.compareUnsigned(nx, MAP_W) < 0) w.x[p] = (byte) nx;
-        if (Integer.compareUnsigned(ny, MAP_H) < 0) w.y[p] = (byte) ny;
+        // foragers head for food half the time; otherwise (or if nothing is better) wander
+        if (!(foraging && (rng.next32() & 1) == 0 && Food.stepToFood(w, p))) {
+            int dx = rng.below(3) - 1;
+            int dy = rng.below(3) - 1;
+            int nx = (w.x[p] & 0xFF) + dx, ny = (w.y[p] & 0xFF) + dy;
+            if (Integer.compareUnsigned(nx, MAP_W) < 0) w.x[p] = (byte) nx;
+            if (Integer.compareUnsigned(ny, MAP_H) < 0) w.y[p] = (byte) ny;
+        }
         rollTrigger(p, WALK, false, years);                    // trips and falls
     }
 

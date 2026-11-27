@@ -172,8 +172,15 @@ final class Screen extends JPanel {
         put(" MEATBOX ", WHITE);
         put(" Year " + (w.day / 365) + " Day ");
         num(w.day % 365, 3);
-        put("  Pop " + w.popCount + "  Born " + w.births + "  Died " + w.deaths
-            + "  Disabled " + w.disabledN + "  Wood " + w.wood);
+        put("  " + Climate.SEASON[Climate.season(w.day % 365)] + " ");
+        put(String.format("%.0fC", w.outT / 100.0), w.outT < 0 ? BCYAN : FG);
+        put("  Pop " + w.popCount + "  Born " + w.births + "  Died " + w.deaths);
+        int pop = Math.max(1, w.popCount);
+        long foodDays = w.food / RATION / pop;
+        put("  Food ");
+        put(foodDays + "d", w.foodQ < 65536 ? BRED : foodDays < 30 ? YELLOW : GREEN);
+        put("  Wood " + w.wood);
+        if (w.fireQ < 65536) put(" (fire " + (w.fireQ * 100 >> 16) + "%)", BRED);
         int trees = 0;
         for (byte t : w.map) if (t == T_TREE) trees++;
         put("  Trees " + trees + "  x" + SPEEDS[speedIdx] + "d");
@@ -226,6 +233,9 @@ final class Screen extends JPanel {
         if ((cap & Sim.LEGS) == 0) put("can't walk ", BRED);
         if ((cap & Sim.ARMS) == 0) put("no usable arm ", BRED);
         if (w.preg[p] > 0) put("pregnant (" + w.preg[p] + "d) ");
+        int f = w.fat[p];
+        if (f < FAT_IMMUNE) put(f < FAT_WASTING ? "STARVING " : "hungry ", f < FAT_WASTING ? BRED : YELLOW);
+        if (b(p, B_TEMP) < HYPO_T) put("hypothermic ", BCYAN);
 
         at(4, PANEL_COL);
         put("Blood ");          pctGood(b[bb + B_VOL]);
@@ -242,7 +252,9 @@ final class Screen extends JPanel {
 
         at(6, PANEL_COL);
         put("Body", WHITE);
-        put("  (red name = can't be used)");
+        put("  Food reserve "); pctGood(w.fat[p]);
+        put("  Warmth ");       pctGood(w.warmth[p]);
+        put("  (red = unusable)", GRAY);
         for (int r = 0; r < 8; r++) {
             at(7 + r, PANEL_COL);       partLine(p, r);
             at(7 + r, PANEL_COL + 27);  partLine(p, r + 8);
@@ -300,6 +312,8 @@ final class Screen extends JPanel {
             num(bestN, 5);
         }
     }
+
+    int b(int p, int slot) { return w.blood[p * 8 + slot]; }
 
     /** High is good: green >= 90 %, yellow >= 70 %, else red. */
     void pctGood(int v) { put(v / 100 + "%", v >= 9000 ? GREEN : v >= 7000 ? YELLOW : RED); }

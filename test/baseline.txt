@@ -1,36 +1,37 @@
-year   25  pop   109  births    102  deaths     33  disabled    1  wood      0
-year   50  pop   244  births    349  deaths    145  disabled    4  wood      0
-year   75  pop   457  births    757  deaths    340  disabled   11  wood      0
-year  100  pop   808  births   1427  deaths    659  disabled   19  wood      0
-year  125  pop  1418  births   2709  deaths   1331  disabled   37  wood      0
-year  150  pop  2582  births   5000  deaths   2458  disabled   67  wood      0
-year  175  pop  4095  births   8386  deaths   4331  disabled  123  wood      0
-year  200  pop  4096  births  10007  deaths   5951  disabled  165  wood      0
-year  225  pop  4094  births  12578  deaths   8524  disabled  225  wood      0
-year  250  pop  4096  births  15474  deaths  11418  disabled  282  wood      0
-year  275  pop  4094  births  17487  deaths  13433  disabled  332  wood      0
-year  300  pop  4095  births  20129  deaths  16074  disabled  403  wood      0
+year    pop  births  deaths  disab  food(d/p)  wood/p  fire%  trees  fat%  harvest%  land(d/p)  gath(d/p)  return%  coldest  winter-dead
+  25     80      57      17      0        119       8    100    638    99        99        333        301       99   -13.5C            1
+  50    138     182      84      1        119       8    100   1206    99        55         58        302       99   -10.4C            1
+  75    196     334     178      2        119       8    100   1223   100       102         56        336       90   -13.6C            0
+ 100    137     468     371      5        120       8    100   1284   100       123        150        354       98   -14.2C            0
+ 125    206     626     460      7        119       8    100   1243   100       112         66        316       87   -16.2C            0
+ 150    205     742     577     12        120       8    100   1114   100       108         55        399       83   -14.6C            2
+ 175    105     827     762     14        120       8    100   1286   100       107        198        607       98   -15.8C            2
+ 200     84     884     840     17        120       8    100   1361   100        79        220        418       99   -16.1C            0
+ 225    135    1019     924     20        120       8    100   1319   100        55         67        294       98   -15.1C            1
+ 250    128    1176    1088     23        120       8    100   1269   100        80        126        467       99    -8.3C            0
+ 275    207    1351    1184     27        120       8    100   1213    99       110         70        312       90   -10.5C            1
+ 300    188    1523    1375     29        120       8    100   1225   100       107         80        322       92   -19.3C            2
 
-deaths by age:  <1 4141  1-14 3396  15-49 934  50-69 4398  70+ 3205
-infant deaths per 1000 births: 205
-mean age at death (all): 34   (those who reached 15): 64
+deaths by age:  <1 318  1-14 391  15-49 252  50-69 237  70+ 177
+infant deaths per 1000 births: 208
+mean age at death (all): 27   (those who reached 15): 53
+deaths by season:  winter 269  spring 568  summer 263  autumn 275
 causes of death:
-  Old age               7027
-  Common cold            190
-  Influenza               99
-  Gastroenteritis        135
-  Pneumonia             4544
-  Tuberculosis           778
-  Appendicitis            23
-  Stroke                   5
-  Heart attack            16
-  Measles                142
-  Cancer                 385
-  Crushed by tree          2
-  Broken leg               4
-  Birth hemorrhage       341
-  Premature birth       1826
-  Birth asphyxia         191
-  Newborn sepsis         366
-person-days simulated: 257035431
-elapsed ms: 10752
+  Old age                343
+  Common cold             22
+  Influenza                6
+  Gastroenteritis         74
+  Pneumonia              318
+  Tuberculosis            42
+  Appendicitis             2
+  Measles                 17
+  Cancer                  21
+  Axe cut                  2
+  Crushed by tree         22
+  Broken leg              62
+  Birth hemorrhage        13
+  Premature birth        123
+  Birth asphyxia           9
+  Newborn sepsis          37
+  Starvation             262
+person-days simulated: 15298912

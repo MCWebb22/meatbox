@@ -32,6 +32,7 @@ final class World {
     // ---- the map: one byte per tile (T_GRASS .. T_STUMP) ----------------------
     final byte[] map  = new byte[MAP_SIZE];
     final byte[] map2 = new byte[MAP_SIZE];      // scratch for smoothing
+    final int[]  forage = new int[MAP_SIZE];     // standing wild food on each tile, kcal
 
     // ---- people (index 0 .. MAX_POP-1) ---------------------------------------------
     final char[]  hp      = new char[MAX_POP * NPARTS];  // 16 parts each
@@ -54,6 +55,9 @@ final class World {
     final byte[]  bleeder = new byte[MAX_POP];           // last thing that bled
     final boolean[] bed   = new boolean[MAX_POP];        // bedridden today
     final byte[]  recent  = new byte[MAX_POP];           // last serious affliction
+    final char[]  fat     = new char[MAX_POP];           // energy reserve 0..10000 (10000 = well fed)
+    final byte[]  rank    = new byte[MAX_POP];           // standing 0..255: low = fed first when short
+    final char[]  warmth  = new char[MAX_POP];           // 10000 = comfortable, 0 = core cooled 7 C+
 
     // ---- bloodstream slots: blood[person*8 + B_xxx] ---------------------------------
     static final int B_VOL = 0, B_O2 = 1, B_PERF = 2, B_PATH = 3,
@@ -71,6 +75,20 @@ final class World {
     final int[] ageBucket  = new int[5];     // <1, 1-14, 15-49, 50-69, 70+
     int adultAgeSum, adultDeaths, allAgeSum;
     long personDays;
+
+    // ---- seasons, food, fire ----------------------------------------------------------------
+    int  outT;                 // today's outdoor temperature (hundredths C)
+    int  anomaly;              // weather: today's departure from the seasonal mean
+    int  harvestPct = 100;     // this year's luck for wild food
+    long food;                 // the shared store, kcal
+    long demand, demandPrev;   // kcal everyone wanted today / yesterday
+    int  foodQ = 65536;        // today's ration: share of need eaten, out of 65536
+    int  fertQ = 65536;        // today's conception multiplier from food security, out of 65536
+    int  fireQ = 65536;        // today's fire: share of heating demand met, out of 65536
+    long gathered, eaten;      // kcal totals (statistics)
+    long gatherTry, gatherGot; // today's foraging: kcal sought vs found
+    int  returnQ = 65536;      // foraging return (found / sought), ~1-year running average, /65536
+    final int[] seasonDeaths = new int[4];
 
     final Rng rng;
     World(long seed) { rng = new Rng(seed); }
@@ -93,6 +111,8 @@ final class World {
             }
             System.arraycopy(map2, 0, map, 0, MAP_SIZE);
         }
+        for (int i = 0; i < MAP_SIZE; i++)                  // start half-full
+            forage[i] = FORAGE_YIELD[map[i]] * FORAGE_CAP_PCT / 200;
     }
 
     /** Mature trees among the 8 neighbours of (x, y). */
@@ -117,7 +137,9 @@ final class World {
             age[p] = (char) rng.below(40 * 365);
             x[p] = (byte) (rng.below(20) + MAP_W / 2 - 10);
             y[p] = (byte) (rng.below(10) + MAP_H / 2 - 5);
+            fat[p] = FAT_START;
         }
+        food = (long) popCount * RATION * START_STORE_DAYS;
     }
 
     // =====================================================================================
@@ -134,6 +156,8 @@ final class World {
         sex[p] = (byte) (rng.next32() & 1);
         age[p] = 0; preg[p] = 0; lame[p] = 0;
         cause[p] = 0; bleeder[p] = 0; bed[p] = false; recent[p] = 0;
+        fat[p] = FAT_NEWBORN; warmth[p] = HP_MAX;
+        rank[p] = (byte) rng.below(256);
         immune[p] = 0;
         mother[p] = 0xFFFF;
         cap[p] = 0xFFFF;
@@ -167,6 +191,7 @@ final class World {
             bucket = yrs < 50 ? 2 : yrs < 70 ? 3 : 4;
         }
         ageBucket[bucket]++;
+        seasonDeaths[Climate.season(day % 365)]++;
         freeStack[freeTop++] = (char) p;
         log(personName(p) + " died: " + Afflictions.TABLE[cause[p] & 0xFF].name + " (age " + yrs + ")");
     }

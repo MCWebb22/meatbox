@@ -200,6 +200,11 @@ final class Afflictions {
     static final Aff NEOSEP = add(new Aff("Newborn sepsis", NEWBORN)   // [tune]
         .sepsis(450).rate(3000).lasts(5, 10).pain(30).effects(BEDRIDDEN));
 
+    // ---- shortage deaths: given by code, used as causes of death ----------------------
+    // Added at the END so the ids of everything above stay the same.
+    static final Aff STARVATION  = add(new Aff("Starvation", NONE));   // organ wasting, Sim.update
+    static final Aff HYPOTHERMIA = add(new Aff("Hypothermia", NONE));  // cold heart, Sim.update
+
     // =================================================================================
     /** The table as an array (fast lookup by id). Built after every add() above ran. */
     static final Aff[] TABLE = LIST.toArray(new Aff[0]);

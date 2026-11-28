@@ -526,87 +526,101 @@ final class Health {
     private static int mul(int a, int b) { return (int) (((long) a * b * 53687L) >>> 29); }
     private static int soft(int v, int floor) { return floor + mul(v, HP_MAX - floor); }   // floor..10000
 
-    private final int[] legs = new int[2], hands = new int[2], fnTmp = new int[8];
 
     void functions(int p, int years, int perf, int pain) {
+        // Hot path: every person, every day. Arrays and masks go into locals once;
+        // a disabled part (dis/lame bit) or region reads as 0.
         final long off = dis | w.lame[p];
-        final int fb = p * NFN;
+        final int rmask = disReg;
+        final char[] hp = w.hp, ri = w.regInt;
+        final int hb = p * NPARTS, rb = p * Bones.NREG, fb = p * NFN;
         // spinal cord: an injury at level L takes everything below it
-        int cord = effHp(p, CORD, off), lvl = w.cordLvl[p];
-        int cordLegs = cord;
-        int cordArms = lvl == 0 || lvl > 8 ? soft(cord, 5000) : lvl <= 4 ? cord : soft(cord, (lvl - 4) * 2000);
-        int nerves = soft(effHp(p, NERVES, off), 3000);
+        final int cord = (off & (1L << CORD)) != 0 ? 0 : hp[hb + CORD], lvl = w.cordLvl[p];
+        final int cordArms = lvl == 0 || lvl > 8 ? soft(cord, 5000) : lvl <= 4 ? cord : soft(cord, (lvl - 4) * 2000);
+        final int nerves = soft((off & (1L << NERVES)) != 0 ? 0 : hp[hb + NERVES], 3000);
 
         // legs: bones x muscle x joints x cord x nerves
-        final int[] legs = this.legs;
+        int legL = 0, legR = 0;
         for (int s = 0; s < 2; s++) {
-            int bone = Math.min(Math.min(reg(p, Bones.L_THIGH + s), reg(p, Bones.L_SHIN + s)), soft(reg(p, Bones.L_FOOT + s), 3000));
-            int muscle = soft(effHp(p, L_LEG_M + s, off), 2000);
-            int joint = Math.min(Math.min(effHp(p, L_HIP + s, off), effHp(p, L_KNEE + s, off)), soft(effHp(p, L_ANKLE + s, off), 4000));
-            joint = soft(joint, 2500);                                  // worn joints hurt but still work
-            legs[s] = mul(mul(mul(mul(bone, muscle), joint), cordLegs), nerves);
+            int bone = Math.min(Math.min(rg(ri, rb, rmask, Bones.L_THIGH + s), rg(ri, rb, rmask, Bones.L_SHIN + s)),
+                                soft(rg(ri, rb, rmask, Bones.L_FOOT + s), 3000));
+            int muscle = soft(hpo(hp, hb, off, L_LEG_M + s), 2000);
+            int joint = Math.min(Math.min(hpo(hp, hb, off, L_HIP + s), hpo(hp, hb, off, L_KNEE + s)),
+                                 soft(hpo(hp, hb, off, L_ANKLE + s), 4000));
+            int leg = mul(mul(mul(mul(bone, muscle), soft(joint, 2500)), cord), nerves);   // worn joints hurt but still work
+            if (s == 0) legL = leg; else legR = leg;
         }
-        int trunk = Math.min(reg(p, Bones.PELVIS), Math.min(soft(reg(p, Bones.LUMBAR), 2000), soft(effHp(p, SPINE_J, off), 4000)));
-        int mob = legs[0] >= 2500 && legs[1] >= 2500 ? (legs[0] + legs[1]) / 2 : Math.max(legs[0], legs[1]) / 4;
-        mob = mul(mob, trunk);
-        mob = mul(mob, HP_MAX - Math.min(7000, pain * 2 / 3));
+        int trunk = Math.min(rg(ri, rb, rmask, Bones.PELVIS),
+                    Math.min(soft(rg(ri, rb, rmask, Bones.LUMBAR), 2000), soft(hpo(hp, hb, off, SPINE_J), 4000)));
+        int mob = legL >= 2500 && legR >= 2500 ? (legL + legR) >> 1 : Math.max(legL, legR) >> 2;
+        mob = mul(mul(mob, trunk), HP_MAX - Math.min(7000, pain * 2 / 3));
         if (years < 1) mob = 0;
         else if (years < 2) mob = mob / 3;
 
         // hands
-        final int[] hands = this.hands;
+        int handL = 0, handR = 0;
         for (int s = 0; s < 2; s++) {
-            int bone = Math.min(Math.min(reg(p, Bones.L_UPARM + s), reg(p, Bones.L_FOREARM + s)), soft(reg(p, Bones.L_GIRDLE + s), 3000));
-            bone = mul(bone, soft(reg(p, Bones.L_HAND + s), 1000));
-            int muscle = soft(effHp(p, L_ARM_M + s, off), 2000);
-            int joint = soft(Math.min(Math.min(effHp(p, L_SHOULDER + s, off), effHp(p, L_ELBOW + s, off)), effHp(p, L_WRIST + s, off)), 2500);
-            hands[s] = mul(mul(mul(mul(bone, muscle), joint), cordArms), nerves);
-            if (years < 3) hands[s] = hands[s] * (years + 1) / 4;
+            int bone = Math.min(Math.min(rg(ri, rb, rmask, Bones.L_UPARM + s), rg(ri, rb, rmask, Bones.L_FOREARM + s)),
+                                soft(rg(ri, rb, rmask, Bones.L_GIRDLE + s), 3000));
+            bone = mul(bone, soft(rg(ri, rb, rmask, Bones.L_HAND + s), 1000));
+            int muscle = soft(hpo(hp, hb, off, L_ARM_M + s), 2000);
+            int joint = soft(Math.min(Math.min(hpo(hp, hb, off, L_SHOULDER + s), hpo(hp, hb, off, L_ELBOW + s)),
+                                      hpo(hp, hb, off, L_WRIST + s)), 2500);
+            int hand = mul(mul(mul(mul(bone, muscle), joint), cordArms), nerves);
+            if (years < 3) hand = hand * (years + 1) / 4;
+            if (s == 0) handL = hand; else handR = hand;
         }
 
-        int brain = effHp(p, BRAIN, off);
-        int eL = effHp(p, L_EYE, off), eR = effHp(p, R_EYE, off);
-        int vision = Math.min(HP_MAX, Math.max(eL, eR) + Math.min(eL, eR) / 4);
-        vision = mul(vision, soft(brain, 5000));
-        int earL = mul(effHp(p, L_EAR, off), reg(p, Bones.OSSICLES)), earR = mul(effHp(p, R_EAR, off), reg(p, Bones.OSSICLES));
-        int hearing = Math.min(HP_MAX, Math.max(earL, earR) + Math.min(earL, earR) / 4);
+        final int brain = hpo(hp, hb, off, BRAIN);
+        int eL = hpo(hp, hb, off, L_EYE), eR = hpo(hp, hb, off, R_EYE);
+        int vision = mul(Math.min(HP_MAX, Math.max(eL, eR) + (Math.min(eL, eR) >> 2)), soft(brain, 5000));
+        int oss = rg(ri, rb, rmask, Bones.OSSICLES);
+        int earL = mul(hpo(hp, hb, off, L_EAR), oss), earR = mul(hpo(hp, hb, off, R_EAR), oss);
+        int hearing = Math.min(HP_MAX, Math.max(earL, earR) + (Math.min(earL, earR) >> 2));
 
-        int musc = (w.hp[p * NPARTS + L_LEG_M] + w.hp[p * NPARTS + R_LEG_M] + w.hp[p * NPARTS + L_ARM_M]
-                  + w.hp[p * NPARTS + R_ARM_M] + 2 * w.hp[p * NPARTS + CORE_M]) / 6;
+        int musc = (hp[hb + L_LEG_M] + hp[hb + R_LEG_M] + hp[hb + L_ARM_M] + hp[hb + R_ARM_M] + 2 * hp[hb + CORE_M]) / 6;
         int stamina = mul(perf, soft(musc, 2000));
         int temp = w.blood[p * 8 + B_TEMP];
         if (temp > 3800) stamina = mul(stamina, Math.max(2000, HP_MAX - (temp - 3800) * 40));
 
-        int glu = w.blood2[p * 4 + B2_GLU], waste = w.blood[p * 8 + B_WASTE];
         int cog = brain;
         if (perf < 7000) cog = mul(cog, soft(perf * 10 / 7, 3000));
+        int glu = w.blood2[p * 4 + B2_GLU];
         if (glu < 300) cog = mul(cog, soft(glu * 10000 / 300, 2000));
+        int waste = w.blood[p * 8 + B_WASTE];
         if (waste > UREMIA_T) cog = mul(cog, Math.max(2000, HP_MAX - (waste - UREMIA_T)));
         if (years < 18) cog = mul(cog, 3000 + years * 7000 / 18);      // still developing
 
-        int speech = mul(soft(brain, 0), Math.min(effHp(p, AIRWAY, off) * 2, soft(effHp(p, MOUTH, off), 5000)));
-        speech = Math.min(HP_MAX, speech);
-        speech = mul(speech, soft(reg(p, Bones.FACE), 5000));
+        int speech = Math.min(HP_MAX, mul(soft(brain, 0), Math.min(hpo(hp, hb, off, AIRWAY) * 2, soft(hpo(hp, hb, off, MOUTH), 5000))));
+        speech = mul(speech, soft(rg(ri, rb, rmask, Bones.FACE), 5000));
         if (years < 2) speech = speech * years / 2;
 
-        final int[] f = this.fnTmp;
-        f[0] = mob; f[1] = hands[0]; f[2] = hands[1]; f[3] = vision; f[4] = hearing; f[5] = stamina; f[6] = cog; f[7] = speech;
-        for (int i = 0; i < 8; i++) {
-            int v = Math.max(0, Math.min(HP_MAX, f[i] - fnPen[i]));
-            w.func[fb + i] = (char) v;
-        }
+        final char[] fn = w.func;
+        final int[] pen = fnPen;
+        int vVis, vL, vR, vMob;
+        fn[fb + FN_MOBILITY]  = (char) (vMob = clampHp(mob - pen[FN_MOBILITY]));
+        fn[fb + FN_MANIP_L]   = (char) (vL = clampHp(handL - pen[FN_MANIP_L]));
+        fn[fb + FN_MANIP_R]   = (char) (vR = clampHp(handR - pen[FN_MANIP_R]));
+        fn[fb + FN_VISION]    = (char) (vVis = clampHp(vision - pen[FN_VISION]));
+        fn[fb + FN_HEARING]   = (char) clampHp(hearing - pen[FN_HEARING]);
+        fn[fb + FN_STAMINA]   = (char) clampHp(stamina - pen[FN_STAMINA]);
+        fn[fb + FN_COGNITION] = (char) clampHp(cog - pen[FN_COGNITION]);
+        fn[fb + FN_SPEECH]    = (char) clampHp(speech - pen[FN_SPEECH]);
 
         // legacy capability bits for v0.1 behaviour code
         int c = 0;
-        if (w.func[fb + FN_VISION] >= USABLE_HP) c |= 1 << EYES;
+        if (vVis >= USABLE_HP) c |= 1 << EYES;
         if (cord >= USABLE_HP) c |= 1 << SPINE;
-        if (w.func[fb + FN_MANIP_L] >= USABLE_HP) c |= 1 << LARM;
-        if (w.func[fb + FN_MANIP_R] >= USABLE_HP) c |= 1 << RARM;
-        int mp = w.func[fb + FN_MOBILITY];
-        if (mp >= USABLE_HP) c |= (1 << LLEG) | (1 << RLEG);
-        else if (mp >= 600) c |= 1 << (legs[0] >= legs[1] ? LLEG : RLEG);   // hobbling on one leg
+        if (vL >= USABLE_HP) c |= 1 << LARM;
+        if (vR >= USABLE_HP) c |= 1 << RARM;
+        if (vMob >= USABLE_HP) c |= (1 << LLEG) | (1 << RLEG);
+        else if (vMob >= 600) c |= 1 << (legL >= legR ? LLEG : RLEG);   // hobbling on one leg
         w.cap[p] = (char) c;
     }
+
+    private static int hpo(char[] hp, int hb, long off, int k) { return ((off >>> k) & 1) != 0 ? 0 : hp[hb + k]; }
+    private static int rg(char[] ri, int rb, int mask, int r) { return ((mask >>> r) & 1) != 0 ? 0 : ri[rb + r]; }
+    private static int clampHp(int v) { return v < 0 ? 0 : v > HP_MAX ? HP_MAX : v; }
 
     /** Work capacity once the mind is known: body x energy. */
     void workCapacity(int p) {

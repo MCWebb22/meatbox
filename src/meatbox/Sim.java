@@ -259,7 +259,18 @@ final class Sim {
         final int[] wear = h.wear;
         final int age16 = sen;                                  // ageing loss = sen * AGEW / 16
         long painParts = 0;
-        for (int k = 0; k < NPARTS; k++) {
+        // Fast path (most days for most people): no ageing, stress or wear, so only
+        // parts below full can change. Same result as the full loop, less work.
+        if (age16 == 0 && stress4 == 0 && !worn) {
+            for (int k = 0; k < NPARTS; k++) {
+                int v = hp[hb + k];
+                if (v == 0 || v >= HP_MAX) continue;
+                v += healPct == 100 ? REGEN[k] : REGEN[k] * healPct / 100;
+                if (v > HP_MAX) v = HP_MAX;
+                hp[hb + k] = (char) v;
+                painParts += (HP_MAX - v) * PAINW[k];
+            }
+        } else for (int k = 0; k < NPARTS; k++) {
             int v = hp[hb + k];
             if (v == 0) continue;                              // lost stays lost
             if (worn && wear[k] != 0) v -= wear[k];            // scarring: no healing today

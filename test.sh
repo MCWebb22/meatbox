@@ -6,4 +6,4 @@ cd "$(dirname "$0")"
 rm -rf out-test
 javac --release 17 -d out-test src/meatbox/*.java test/meatbox/*.java
 java -cp out-test meatbox.RegressionTest "$@"
-if [ "$1" != "--update" ]; then java -cp out-test meatbox.ShortageTest; fi
+if [ "$1" != "--update" ]; then java -cp out-test meatbox.ShortageTest; java -cp out-test meatbox.CoverageTest; fi

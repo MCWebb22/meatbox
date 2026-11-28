@@ -85,6 +85,8 @@ final class Sim {
         w.demand = 0;
 
         w.menPrev = w.menCount;          // "is there a man?" uses YESTERDAY's count
+        w.menFertPrev = w.menCount == 0 ? 100 : (int) (w.menFertSum / w.menCount);
+        w.menFertSum = 0;
         w.menCount = 0;
 
         int hi = w.popHi;                // babies born today start tomorrow
@@ -261,16 +263,21 @@ final class Sim {
         long painParts = 0;
         // Fast path (most days for most people): no ageing, stress or wear, so only
         // parts below full can change. Same result as the full loop, less work.
+        // w.hurtMask[p] lists exactly those parts, so the loop visits only them.
         if (age16 == 0 && stress4 == 0 && !worn) {
-            for (int k = 0; k < NPARTS; k++) {
-                int v = hp[hb + k];
-                if (v == 0 || v >= HP_MAX) continue;
-                v += healPct == 100 ? REGEN[k] : REGEN[k] * healPct / 100;
-                if (v > HP_MAX) v = HP_MAX;
+            long m = w.hurtMask[p], healed = 0;
+            while (m != 0) {
+                int k = Long.numberOfTrailingZeros(m);
+                m &= m - 1;
+                int v = hp[hb + k] + (healPct == 100 ? REGEN[k] : REGEN[k] * healPct / 100);
+                if (v >= HP_MAX) { v = HP_MAX; healed |= 1L << k; }
                 hp[hb + k] = (char) v;
                 painParts += (HP_MAX - v) * PAINW[k];
             }
-        } else for (int k = 0; k < NPARTS; k++) {
+            w.hurtMask[p] &= ~healed;
+        } else {
+          long mask = 0;
+          for (int k = 0; k < NPARTS; k++) {
             int v = hp[hb + k];
             if (v == 0) continue;                              // lost stays lost
             if (worn && wear[k] != 0) v -= wear[k];            // scarring: no healing today
@@ -280,6 +287,9 @@ final class Sim {
             v = v < 0 ? 0 : v > HP_MAX ? HP_MAX : v;
             hp[hb + k] = (char) v;
             painParts += (HP_MAX - v) * PAINW[k];
+            if (v != 0 && v < HP_MAX) mask |= 1L << k;
+          }
+          w.hurtMask[p] = mask;
         }
         if (fat < FAT_WASTING) {                               // [tune] reserve gone: wasting
             int s = Health.ageScale(FAT_WASTING - fat, years); // 0..1000, children x2-4
@@ -311,10 +321,13 @@ final class Sim {
             if (pr == 0) giveBirth(p);
         } else if (pr < 0) {
             w.preg[p] = (short) (pr + 1);                       // breastfeeding pause
+        } else if (w.sex[p] == SEX_M) {
+            if (years >= FERTILE_MIN) w.menFertSum += (long) h.fertPct * hp[hb + GONADS] / HP_MAX;
         } else if (w.sex[p] == SEX_F && years >= FERTILE_MIN && years <= FERTILE_MAX
                    && w.menPrev != 0 && fat > FAT_FERTILE_LO) {
             // fertility: conditions, and the ovaries / womb themselves
-            long fert = (long) h.fertPct * Math.min(hp[hb + GONADS], hp[hb + UTERUS]) / HP_MAX;
+            // fertility: her conditions and organs, times the average man's (male infertility)
+            long fert = (long) h.fertPct * Math.min(hp[hb + GONADS], hp[hb + UTERUS]) / HP_MAX * w.menFertPrev / 100;
             if (rng.next32() < conceiveP32(fat) * fert / 100) {
                 w.preg[p] = GESTATION_DAYS;
                 w.pregFlags[p] = 0;

@@ -43,8 +43,12 @@ import java.util.Map;
  *            progress(per year) severity grows | remits(per 100k/yr) | then(..)
  *  EFFECTS:  hit dot bleeds sepsis pain (body), fn(..) (abilities), psy(..)
  *            (mind), blood(..) (glucose, BP, metabolism, haemoglobin), stress,
- *            immuno, bmd, fert, bleedx, leads(..) complications, fatal(..)
- *            sudden death for mechanisms not modelled organ by organ.
+ *            immuno, bmd, fert, bleedx, leads(..) complications, fatal(..) a
+ *            yearly hazard of sudden death while active, caseFatal(..) a chance
+ *            per case at onset, both for mechanisms not modelled organ by organ.
+ *  SOURCES:  Coverage.java maps every GBD 2021 cause and DSM-5-TR disorder
+ *            (the lists that decide what is in the sim) to entries here;
+ *            src(..) says where an entry's numbers come from.
  *  All effects scale with the case's severity (0..10000).
  *
  *  Lethality is still never a number: it EMERGES from damage vs. healing,
@@ -91,6 +95,7 @@ final class Afflictions {
     static final int STILLBORN = 256;  // birth trigger: the baby is born dead
     static final int QUIET     = 512;  // don't write to the event log
     static final int FLUID     = 1024; // bleeds() is fluid loss (diarrhoea, burns): no red cells lost
+    static final int BOTH      = 2048; // both sides: the mirror part (left/right) takes the same damage
 
     static final int SAME = 0xFFFF, ANY_LIMB = 0xFFFE, ANY_LEG = 0xFFFD;   // part codes for permanent()
 
@@ -101,7 +106,7 @@ final class Afflictions {
         int id, cat, immIdx = -1;
         String src = "";
         // who / how often
-        int rateRaw, minAge = 0, maxAge = 200;
+        double rateRaw; int minAge = 0, maxAge = 200;
         double kids = 1, fMul = 1, mMul = 1, dblYears = 0, dblAt = 0, peakAge = -1, peakSd = 0;
         int geneFam = -1; double geneFold = 1;
         final int[] ch = new int[6]; final double[] chMax = new double[6]; final int[] chMode = new int[6]; int nch;
@@ -119,6 +124,7 @@ final class Afflictions {
         int sevMin = 10000, sevMax = 10000, progress;   // progress = severity per year
         int epiOn, epiOnRng, epiOff, epiOffRng;
         long remit32, fatal32;
+        long act32;   // leads + fatal per day, for the one-draw daily roll in Health.afflictions
         int mech = -1, energy, impacts = 1;   // injury: Bones mechanism
         int deformReg = -1, deformPct;
         // abilities, mind, blood
@@ -133,11 +139,12 @@ final class Afflictions {
         String thenName; int thenId = -1, then16 = 65536;
         String spreadName; int spreadId = -1;
         int fatalRaw, remitRaw;
+        long caseFatal32;                      // chance per case of dying at onset
 
         Aff(String name, int trigger) { this.name = name; this.trigger = trigger; }
 
         // ---- who / how often
-        Aff rate(int r)              { rateRaw = r; return this; }
+        Aff rate(double r)           { rateRaw = r; return this; }
         Aff kids(double k)           { kids = k; return this; }
         Aff ages(int a, int b)       { minAge = a; maxAge = b; return this; }
         Aff minAge(int a)            { minAge = a; return this; }
@@ -172,6 +179,8 @@ final class Afflictions {
         Aff spreadsAs(String n)      { spreadName = n; return this; }
         Aff infects(int i)           { return onset("Wound infection", i * 100000 / 256); }
         Aff effects(int f)           { fx |= f; return this; }
+        /** bilateral: whichever side the case sits on, the other side is hit just as hard */
+        Aff both()                   { fx |= BOTH; return this; }
         Aff chronic()                { fx |= CHRONIC; return this; }
         Aff sev(int a, int b)        { sevMin = a; sevMax = b; return this; }
         Aff progress(int perYear)    { progress = perYear; return this; }
@@ -180,6 +189,8 @@ final class Afflictions {
         }
         Aff remits(int per100kYr)    { remitRaw = per100kYr; return this; }
         Aff fatal(int per100kYr)     { fatalRaw = per100kYr; return this; }
+        /** chance per 100,000 CASES of sudden death at onset (fatal() is a yearly hazard while active). */
+        Aff caseFatal(int per100k)   { caseFatal32 = (long) per100k * 4294967296L / 100000; return this; }
         Aff injury(int mechanism, int e, int n) { mech = mechanism; energy = e; impacts = n; return this; }
         Aff deform(int region, int pct) { deformReg = region; deformPct = pct; return this; }
         /** chance per 100,000 that a part is disabled for good, and which part. */
@@ -259,6 +270,9 @@ final class Afflictions {
             a.spreadId = a.spreadName != null ? idOf(a, a.spreadName) : a.id;
             a.remit32 = perYear32(a.remitRaw);
             a.fatal32 = perYear32(a.fatalRaw);
+            a.act32 = a.fatal32;
+            for (int i = 0; i < a.nlead; i++) a.act32 += a.lead32[i];
+            if (a.act32 + a.remit32 >= 1L << 32) throw new IllegalStateException(a.name + ": daily chances add past 1");
             if (a.has(IMMUNE)) {
                 if (imm >= 64) throw new IllegalStateException("immunity mask holds 64 conditions");
                 a.immIdx = imm++;

@@ -280,15 +280,15 @@ final class Screen extends JPanel {
         at(9, PANEL_COL);
         put("Body %", WHITE);
         put("  (red = can't be used today)", GRAY);
-        for (int r = 0; r < 8; r++)
+        for (int r = 0; r < 9; r++)
             for (int c = 0; c < 6; c++) {
-                int part = c * 8 + r;
+                int part = c * 9 + r;
                 if (part >= NPARTS) continue;
                 at(10 + r, PANEL_COL + c * 9);
                 partCell(p, part);
             }
 
-        at(18, PANEL_COL);
+        at(19, PANEL_COL);
         int dens = w.bmd[p];
         put("Bones: density "); put(dens / 100 + "%", dens < Config.OSTEO_BMD ? RED : dens < 8500 ? YELLOW : GREEN);
         int shown = 0;
@@ -302,17 +302,17 @@ final class Screen extends JPanel {
         }
         if (w.boneHurt[p] > 2) put(" +" + (w.boneHurt[p] - 2));
 
-        at(19, PANEL_COL);
+        at(20, PANEL_COL);
         put("Conditions", WHITE);
         put(" (" + w.affN[p] + ")");
         int lines = 0;
-        for (int s = 0; s < NSLOTS && lines < 5; s++) {
+        for (int s = 0; s < NSLOTS && lines < 4; s++) {
             int id = w.affId[p * NSLOTS + s];
             if (id == 0) continue;
             Afflictions.Aff a = Afflictions.TABLE[id];
             int part = w.affPart[p * NSLOTS + s];
             int sv = w.affSev[p * NSLOTS + s];
-            at(20 + lines, PANEL_COL);
+            at(21 + lines, PANEL_COL);
             String nm = a.name.length() > 26 ? a.name.substring(0, 26) : a.name;
             pad(nm, 27, a.cat == Afflictions.C_MENTAL ? BMAG : a.cat == Afflictions.C_CANCER ? RED : FG);
             String site = a.has(Afflictions.ON_BONE) ? Bones.name(part) : Body.PARTS[part].abbr();
@@ -322,7 +322,7 @@ final class Screen extends JPanel {
             else put((int) w.affDays[p * NSLOTS + s] + "d left");
             lines++;
         }
-        if (lines == 0) { at(20, PANEL_COL); put("none", GREEN); }
+        if (lines == 0) { at(21, PANEL_COL); put("none", GREEN); }
         causes();
     }
 

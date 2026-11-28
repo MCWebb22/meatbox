@@ -35,8 +35,9 @@ final class Body {
         PROSTATE = 26, BREASTS = 27, SKIN = 28, MARROW = 29,
         L_ARM_M = 30, R_ARM_M = 31, L_LEG_M = 32, R_LEG_M = 33, CORE_M = 34,
         L_SHOULDER = 35, R_SHOULDER = 36, L_ELBOW = 37, R_ELBOW = 38, L_WRIST = 39, R_WRIST = 40,
-        L_HIP = 41, R_HIP = 42, L_KNEE = 43, R_KNEE = 44, L_ANKLE = 45, R_ANKLE = 46, SPINE_J = 47;
-    static final int NPARTS = 48;
+        L_HIP = 41, R_HIP = 42, L_KNEE = 43, R_KNEE = 44, L_ANKLE = 45, R_ANKLE = 46, SPINE_J = 47,
+        OESOPHAGUS = 48, GALLBLADDER = 49, LYMPH = 50, PITUITARY = 51;   // v0.4: added at the end so old numbers hold
+    static final int NPARTS = 52;
 
     // ---- legacy capability bits --------------------------------------------------
     // Sim.act() (and the behaviour code that replaces it) reads w.cap[p] as the
@@ -96,6 +97,10 @@ final class Body {
         new Part("L ankle & foot",  "LAnk",   1, 0,               2,  5,  4),
         new Part("R ankle & foot",  "RAnk",   1, 0,               2,  5,  4),
         new Part("Spinal joints",   "SpJt",   1, 0,               2,  5,  8),  // discs, facets
+        new Part("Oesophagus",      "Oeso",  25, VITAL,           8,  6,  0),  // gone = can't swallow
+        new Part("Gallbladder",     "Gall",  20, 0,               8,  6,  0),  // and bile ducts
+        new Part("Lymph nodes",     "Lymp",  20, 0,               8,  2,  0),  // lymphomas, TB nodes, filariasis
+        new Part("Pituitary",       "Pitu",   5, 0,              32,  0,  0),  // master gland: thyroid, adrenals, growth
     };
 
     /** Where a cancer of "any organ" can start (rough GLOBOCAN shares) [src~]. */
@@ -118,6 +123,7 @@ final class Body {
     static final int[] PAINW  = new int[NPARTS];
     static long vitalMask, pairMask, femaleOnly, maleOnly;
     static int[] VITALS = {};             // single vital parts (pairs checked separately)
+    static final int[] MIRROR = new int[NPARTS];  // the other side of a left/right part, else -1
 
     static void init() {
         if (PARTS.length != NPARTS) throw new IllegalStateException("need exactly " + NPARTS + " parts");
@@ -134,8 +140,15 @@ final class Body {
             if ((f & FEMALE) != 0) femaleOnly |= 1L << i;
             if ((f & MALE) != 0) maleOnly |= 1L << i;
         }
+        for (int i = 0; i < NPARTS; i++) {
+            MIRROR[i] = -1;
+            String n = PARTS[i].name();
+            String m = n.startsWith("L ") ? "R " + n.substring(2) : n.startsWith("R ") ? "L " + n.substring(2) : null;
+            if (m != null) for (int j = 0; j < NPARTS; j++) if (PARTS[j].name().equals(m)) MIRROR[i] = j;
+        }
         VITALS = java.util.stream.IntStream.range(0, NPARTS).filter(i -> ((vitalMask >>> i) & 1) != 0).toArray();
-        if (!PARTS[SPINE_J].name().equals("Spinal joints") || !PARTS[MARROW].name().equals("Bone marrow"))
+        if (!PARTS[SPINE_J].name().equals("Spinal joints") || !PARTS[MARROW].name().equals("Bone marrow")
+                || !PARTS[PITUITARY].name().equals("Pituitary"))
             throw new IllegalStateException("part numbers don't match the table order");
         Bones.init();
     }

@@ -35,7 +35,8 @@ final class World {
     final int[]  forage = new int[MAP_SIZE];     // standing wild food on each tile, kcal
 
     // ---- people (index 0 .. MAX_POP-1) ---------------------------------------------
-    final char[]  hp      = new char[MAX_POP * NPARTS];  // 48 organs, muscles, joints each
+    final char[]  hp      = new char[MAX_POP * NPARTS];  // 52 organs, muscles, joints each
+    final long[]  hurtMask = new long[MAX_POP];          // bit k: part k is between 0 and full (can heal)
     final char[]  affId   = new char[MAX_POP * NSLOTS];  // condition id (0 = empty slot)
     final char[]  affPart = new char[MAX_POP * NSLOTS];  // body part, or bone number if ON_BONE
     final char[]  affDays = new char[MAX_POP * NSLOTS];  // days left (acute) / so far (chronic)
@@ -119,7 +120,7 @@ final class World {
                                       "social", "psychosis"};
     static final String[] FN_NAME = {"walk", "L hand", "R hand", "sight", "hearing", "stamina",
                                      "brain", "speech", "work"};
-    static final int PF_RUBELLA = 1, PF_SYPHILIS = 2;
+    static final int PF_RUBELLA = 1, PF_SYPHILIS = 2, PF_ZIKA = 4;
     static final int NBAND = 21;      // 5-year age bands for disease rates (0-4 .. 100+)
 
     // ---- free list: dead people's numbers get reused ----------------------------------
@@ -129,6 +130,7 @@ final class World {
     int popCount;       // people alive now
 
     // ---- counters -------------------------------------------------------------------------
+    long menFertSum; int menFertPrev = 100;   // men's mean fertility %, yesterday (random mating)
     int menCount, menPrev, day, births, deaths, wood, burnAcc, disabledN;
     final int[] causeCount = new int[4096];
     final int[] caseCount  = new int[4096];  // new cases started, by condition
@@ -232,6 +234,7 @@ final class World {
         konst[p] = (byte) rng.below(17);
         long absent = sex[p] == SEX_M ? Body.femaleOnly : Body.maleOnly;
         for (int i = 0; i < NPARTS; i++) hp[p * NPARTS + i] = ((absent >>> i) & 1) != 0 ? 0 : (char) HP_MAX;
+        hurtMask[p] = 0;
         for (int i = 0; i < NSLOTS; i++) {
             affId[p * NSLOTS + i] = 0; affPart[p * NSLOTS + i] = 0;
             affDays[p * NSLOTS + i] = 0; affSev[p * NSLOTS + i] = 0;

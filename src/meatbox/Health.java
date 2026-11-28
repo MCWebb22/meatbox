@@ -39,7 +39,22 @@ final class Health {
         CH_M_RUBELLA = 22, CH_M_SYPHILIS = 23, CH_M_HEPB = 24, CH_LABOUR = 25, CH_SEXACTIVE = 26,
         CH_LOWBMD = 27, CH_WATER = 28, CH_MOSQUITO = 29, CH_RODENTS = 30, CH_ANIMALS = 31,
         CH_VITD_DEF = 32, CH_IODINE_DEF = 33, CH_SALT = 34, CH_OBESE = 35, CH_FRAIL = 36,
-        CH_LOWVISION = 37, CH_SUN = 38, CH_SICKLE_TRAIT = 39, CH_GENO_HD = 40, CH_OPIATES = 41;
+        CH_LOWVISION = 37, CH_SUN = 38, CH_SICKLE_TRAIT = 39, CH_GENO_HD = 40, CH_OPIATES = 41,
+        CH_G6PD = 42, CH_THAL_TRAIT = 43, CH_CROWDING = 44, CH_M_HIV = 45, CH_M_ZIKA = 46, CH_ENV = 64;
+    // environment exposures from Config.ENV (0 = absent from this world)
+    static final int CH_AEDES = CH_ENV + E_AEDES, CH_SANDFLY = CH_ENV + E_SANDFLY, CH_TSETSE = CH_ENV + E_TSETSE,
+        CH_TRIATOMINE = CH_ENV + E_TRIATOMINE, CH_SNAILS = CH_ENV + E_SNAILS, CH_PIGS = CH_ENV + E_PIGS,
+        CH_DOGS_SHEEP = CH_ENV + E_DOGS_SHEEP, CH_BLACKFLY = CH_ENV + E_BLACKFLY, CH_CULEX = CH_ENV + E_CULEX,
+        CH_RAW_FISH = CH_ENV + E_RAW_FISH, CH_COPEPODS = CH_ENV + E_COPEPODS, CH_SNAKES = CH_ENV + E_SNAKES,
+        CH_DEEP_WATER = CH_ENV + E_DEEP_WATER, CH_SILICA = CH_ENV + E_SILICA, CH_COAL_DUST = CH_ENV + E_COAL_DUST,
+        CH_ASBESTOS = CH_ENV + E_ASBESTOS, CH_COCAINE = CH_ENV + E_COCAINE, CH_AMPHETAMINE = CH_ENV + E_AMPHETAMINE,
+        CH_CANNABIS = CH_ENV + E_CANNABIS, CH_HALLUCINOGENS = CH_ENV + E_HALLUCINOGENS,
+        CH_SEDATIVES = CH_ENV + E_SEDATIVES, CH_INHALANTS = CH_ENV + E_INHALANTS, CH_CAFFEINE = CH_ENV + E_CAFFEINE,
+        CH_GAMBLING = CH_ENV + E_GAMBLING, CH_HIV = CH_ENV + E_HIV, CH_EBOLA = CH_ENV + E_EBOLA,
+        CH_SARS_COV_2 = CH_ENV + E_SARS_COV_2, CH_BLOOD_BORNE = CH_ENV + E_BLOOD_BORNE, CH_TICKS = CH_ENV + E_TICKS,
+        CH_LIVESTOCK = CH_ENV + E_LIVESTOCK, CH_VEHICLES = CH_ENV + E_VEHICLES, CH_FIREARMS = CH_ENV + E_FIREARMS,
+        CH_ELECTRICITY = CH_ENV + E_ELECTRICITY, CH_MEDICINE = CH_ENV + E_MEDICINE,
+        CH_FILARIA = CH_ENV + E_FILARIA, CH_YAWS = CH_ENV + E_YAWS;
 
     // ---- hooks ----------------------------------------------------------------------------
     static int nutrition(World w, int p) { return w.fat[p]; }
@@ -78,9 +93,11 @@ final class Health {
         if (w.affN[p] == 0) return;
         final int sb = p * NSLOTS;
         final int bb = p * 8;
-        for (int s = 0; s < NSLOTS; s++) {
+        int left = w.affN[p];                                          // stop after the last one held this morning
+        for (int s = 0; s < NSLOTS && left > 0; s++) {
             int id = w.affId[sb + s];
             if (id == 0) continue;
+            left--;
             Aff a = TABLE[id];
             int part = w.affPart[sb + s];
             int raw = w.affSev[sb + s];
@@ -104,7 +121,10 @@ final class Health {
                     c = ageScale(c, years);
                     int amt = (c >>> 1) + rng.below(c);                 // 50%..150%
                     if (onBone) Skeleton.hurtBone(w, this, p, part, amt, id, years);
-                    else hurt(p, part, amt, id);
+                    else {
+                        hurt(p, part, amt, id);
+                        if (a.has(BOTH) && MIRROR[part] >= 0) hurt(p, MIRROR[part], amt, id);
+                    }
                     for (int k : a.alsoHit) hurt(p, k, amt >>> 1, id);
                 }
                 if (a.bleed != 0) {
@@ -133,11 +153,21 @@ final class Health {
                 fertPct = fertPct * a.fertPct / 100;
                 bleedxPct = Math.max(bleedxPct, a.bleedxPct);
                 if (monthly) bmdMonth += a.bmdMonth * sv / HP_MAX;
-                for (int i = 0; i < a.nlead; i++)
-                    if (rng.next32() < a.lead32[i]) giveAff(p, a.leadId[i], SAME, -1);
-                if (a.fatal32 != 0 && rng.next32() < a.fatal32 && !w.doomed[p]) {
-                    w.doomed[p] = true; w.cause[p] = (char) id;
-                }
+            }
+
+            // ---- one draw for today's rare events: leads, death, remission. The chances are tiny, so
+            // splitting a single draw into intervals keeps each one right while drawing once, not 2-6 times.
+            long act = dormant ? 0 : a.act32;
+            boolean remitNow = false;
+            if (act + a.remit32 != 0) {
+                long r = rng.next32();
+                if (r < act) {
+                    for (int i = 0; i < a.nlead; i++) {
+                        if (r < a.lead32[i]) { giveAff(p, a.leadId[i], SAME, -1); r = -1; break; }
+                        r -= a.lead32[i];
+                    }
+                    if (r >= 0 && !w.doomed[p]) { w.doomed[p] = true; w.cause[p] = (char) id; }
+                } else remitNow = r < act + a.remit32;
             }
 
             // ---- time passes
@@ -157,7 +187,7 @@ final class Health {
                     giveAff(p, a.thenId, SAME, -1);
                 continue;
             }
-            if (a.remit32 != 0 && rng.next32() < a.remit32) { clearSlot(p, s); continue; }
+            if (remitNow) { clearSlot(p, s); continue; }
             if (monthly && a.progress != 0) sv = Math.min(HP_MAX, sv + a.progress / 12);
             w.affDays[sb + s] = (char) Math.max(1, days);
             w.affSev[sb + s] = (char) (sv | (dormant ? 0x8000 : 0));
@@ -188,8 +218,9 @@ final class Health {
         int h = w.hp[i];
         if (h == 0) return;
         int nv = h - amount;
-        if (nv > 0) { w.hp[i] = (char) nv; return; }
+        if (nv > 0) { w.hp[i] = (char) nv; w.hurtMask[p] |= 1L << part; return; }
         w.hp[i] = 0;
+        w.hurtMask[p] &= ~(1L << part);
         if (((vitalMask >>> part) & 1) != 0) w.cause[p] = (char) id;
         else if (((pairMask >>> part) & 1) != 0) {
             int other = (part & 1) == 1 ? part + 1 : part - 1;          // L_LUNG=11/R_LUNG=12, L_KIDNEY=19/R=20
@@ -266,7 +297,10 @@ final class Health {
         if (a.hit != 0) {
             int h = a.hit * sv / HP_MAX;
             if (onBone) Skeleton.hurtBone(w, this, p, part, h, id, years);
-            else hurt(p, part, h, id);
+            else {
+                hurt(p, part, h, id);
+                if (a.has(BOTH) && MIRROR[part] >= 0) hurt(p, MIRROR[part], h, id);
+            }
             for (int k : a.alsoHit) hurt(p, k, h, id);
         }
         if (a.perm16 != 0 && (rng.next32() >>> 16) < a.perm16) {
@@ -289,10 +323,12 @@ final class Health {
         for (int k = 0; k < a.nonset; k++)
             if ((rng.next32() >>> 16) < a.onset16[k]) giveAff(p, a.onsetId[k], SAME, -1);
         if (a.has(SUDDEN) && !w.doomed[p]) { w.doomed[p] = true; w.cause[p] = (char) id; }
+        else if (a.caseFatal32 != 0 && !w.doomed[p] && rng.next32() < a.caseFatal32) { w.doomed[p] = true; w.cause[p] = (char) id; }
         if (w.preg[p] > 0) {
             if (a.has(END_PREG)) { w.preg[p] = -90; w.miscarriages++; }
             else if (a == Catalogue.RUBELLA) w.pregFlags[p] |= PF_RUBELLA;
             else if (a == Catalogue.SYPHILIS) w.pregFlags[p] |= PF_SYPHILIS;
+            else if (a == CatalogueGbd.ZIKA) w.pregFlags[p] |= PF_ZIKA;
         }
         if (!a.has(QUIET) && (a.cat == C_CANCER || a.cat == C_MENTAL || a.cat == C_NEURO || a.cat == C_CONGEN))
             w.log(w.personName(p) + ": " + a.name);
@@ -416,7 +452,12 @@ final class Health {
             case CH_SUN:        return UV;
             case CH_SICKLE_TRAIT: return Genes.carrier(w, p, Genes.M_SICKLE) ? HP_MAX : 0;
             case CH_GENO_HD:    return Genes.affected(w, p, Genes.M_HD) ? HP_MAX : 0;
-            default: return 0;
+            case CH_G6PD:       return Genes.affected(w, p, Genes.M_G6PD) ? HP_MAX : 0;
+            case CH_THAL_TRAIT: return Genes.carrier(w, p, Genes.M_THAL) ? HP_MAX : 0;
+            case CH_M_HIV:      return hasAff(mo, CatalogueGbd.HIV.id) || hasAff(mo, CatalogueGbd.AIDS.id) ? HP_MAX : 0;
+            case CH_M_ZIKA:     return (w.pregFlags[mo] & PF_ZIKA) != 0 ? HP_MAX : 0;
+            case CH_CROWDING:   return clamp((w.popCount - 50L) * 50);          // 250 people = 10000 [tune]
+            default: return ch >= CH_ENV && ch < CH_ENV + NENV ? Config.ENV[ch - CH_ENV] : 0;
         }
     }
 
@@ -451,13 +492,15 @@ final class Health {
         int panc = hp[hb0 + PANCREAS];
         int glu = 500 + blOff[B2_GLU] + (panc < 4000 ? (4000 - panc) / 3 : 0);
         if (fat < 1000) glu -= (1000 - fat) / 5;
-        int liver = hp[hb0 + LIVER], adr = hp[hb0 + ADRENALS];
+        // the pituitary drives the thyroid and the adrenals' cortisol: losing it fails both [src~]
+        final int pit = hp[hb0 + PITUITARY];
+        int liver = hp[hb0 + LIVER], adr = Math.min(hp[hb0 + ADRENALS], pit);
         if (liver < 2500) glu -= (2500 - liver) / 15;
         if (adr < 2500) glu -= (2500 - adr) / 20;
         w.blood2[b2 + B2_GLU] = (char) Math.max(150, Math.min(6000, glu));
 
         // metabolic rate: thyroid output
-        int thy = hp[hb0 + THYROID];
+        int thy = Math.min(hp[hb0 + THYROID], pit);
         int meta = HP_MAX + blOff[B2_META] - (thy < 5000 ? (5000 - thy) / 2 : 0);
         w.blood2[b2 + B2_META] = (char) Math.max(3000, Math.min(20000, meta));
     }
@@ -481,6 +524,7 @@ final class Health {
         long im = (long) immuneStrength(years) * HP_MAX / IMMUNE_CLEAR;
         im = im * (7000 + w.hp[hb0 + SPLEEN] * 3 / 10) / HP_MAX;       // no spleen: ~70%
         im = im * (3000 + w.hp[hb0 + MARROW] * 7 / 10) / HP_MAX;
+        im = im * (8000 + w.hp[hb0 + LYMPH] / 5) / HP_MAX;              // lymph nodes: ~80% without them [guess]
         im = im * (100 - immunoPct) / 100;
         int glu = w.blood2[p * 4 + B2_GLU];
         if (glu > 1000) im = im * 8 / 10;                              // [src~] hyperglycaemia impairs neutrophils
@@ -655,6 +699,7 @@ final class Health {
         if (Math.min(Math.min(hp[hb0 + L_KNEE], hp[hb0 + R_KNEE]), Math.min(hp[hb0 + L_HIP], hp[hb0 + R_HIP])) < 5000)
             giveAff(p, Catalogue.OA_LABEL.id, SAME, -1);
         if (nutrition(w, p) < 2500) giveAff(p, Catalogue.MALNUTRITION.id, SAME, -1);
+        if (years >= 30 && hp[hb0 + MOUTH] < 3000) giveAff(p, CatalogueGbd.EDENTULISM.id, SAME, -1);
     }
 
     /** Daily: acute delirium in the vulnerable (elderly, small children) when the blood is failing the brain. */

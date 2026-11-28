@@ -99,7 +99,7 @@ final class Catalogue {
     static final Aff COLD = add(new Aff("Common cold", DISEASE)        // [src] CDC: adults 2-3/yr
         .rate(250000).kids(4).on(AIRWAY).dot(15).lasts(5, 5).pain(5).spreads(12)
         .psy(PSY_ENERGY, -1000).effects(QUIET));
-    static final Aff FLU = add(new Aff("Influenza", DISEASE)           // [src] CDC: ~8% per season
+    static final Aff FLU = add(new Aff("Influenza", DISEASE).both()           // [src] CDC: ~8% per season
         .rate(8000).kids(2).on(L_LUNG, R_LUNG).dot(60).sepsis(20).lasts(3, 4).pain(25)
         .spreads(20).psy(PSY_ENERGY, -5000).effects(BEDRIDDEN | QUIET));
     static final Aff GASTRO = add(new Aff("Gastroenteritis", DISEASE)  // [src] CDC: 1.27/person/yr
@@ -113,7 +113,7 @@ final class Catalogue {
     static final Aff LATENT_TB = add(new Aff("Latent tuberculosis", NONE)  // [src] WHO: ~1/4 of humanity infected
         .chronic().leads("Tuberculosis", 100).effects(QUIET).src("[src~] 5-10% lifetime reactivation"));
     static final Aff TB = add(new Aff("Tuberculosis", DISEASE)         // [src] WHO: 134/100k/yr
-        .rate(30).risk(CH_IMMUNO, 4).risk(CH_MALNUT, 2).on(L_LUNG, R_LUNG).dot(13).lasts(365, 2920).pain(10)
+        .rate(30).risk(CH_IMMUNO, 4).risk(CH_MALNUT, 2).after("HIV infection", 5).on(L_LUNG, R_LUNG).dot(13).lasts(365, 2920).pain(10)
         .spreads(6).spreadsAs("Latent tuberculosis").psy(PSY_ENERGY, -3000).fn(FN_STAMINA, 2000)
         .src("untreated: ~70% dead within 10 yr (Tiemersma 2011)"));
     static final Aff APPEND = add(new Aff("Appendicitis", DISEASE)     // [src] GBD: ~230/100k/yr
@@ -122,7 +122,7 @@ final class Catalogue {
     static final Aff POLIO = add(new Aff("Polio", DISEASE)             // [src] 1 in 200 infections paralyse
         .rate(500).kids(20).on(CORD).dot(30).lasts(3, 4).pain(20).spreads(10)
         .permanent(500, ANY_LEG).effects(IMMUNE));
-    static final Aff MEASLES = add(new Aff("Measles", DISEASE)         // [src] almost all children before vaccines
+    static final Aff MEASLES = add(new Aff("Measles", DISEASE).both()         // [src] almost all children before vaccines
         .rate(1000).kids(15).on(L_LUNG, R_LUNG).dot(75).sepsis(30).lasts(7, 7).pain(20)
         .spreads(40).immuno(30).onset("Blinding eye damage", 1000).effects(BEDRIDDEN | IMMUNE));
     static final Aff SMALLPOX = add(new Aff("Smallpox", DISEASE)       // historical; ~30% case fatality [src]
@@ -156,7 +156,7 @@ final class Catalogue {
     static final Aff RUBELLA = add(new Aff("Rubella", DISEASE)         // harmless except in pregnancy
         .rate(800).kids(10).on(SKIN).dot(5).lasts(3, 4).spreads(20).effects(IMMUNE | QUIET));
     static final Aff MALARIA = add(new Aff("Malaria", DISEASE)         // needs mosquitoes (Config.MOSQUITO)
-        .rate(20000).kids(3).needs(CH_MOSQUITO).protect(CH_SICKLE_TRAIT, 10).on(SPLEEN).dot(60)
+        .rate(20000).kids(3).needs(CH_MOSQUITO).protect(CH_SICKLE_TRAIT, 10).protect(CH_THAL_TRAIT, 50).on(SPLEEN).dot(60).alsoHit(BRAIN, L_KIDNEY)
         .sepsis(200).blood(B2_HB, -3000).lasts(7, 14).pain(30).effects(BEDRIDDEN)
         .src("[src] sickle-cell trait gives ~90% protection from severe malaria (Williams 2005)"));
     static final Aff CHOLERA = add(new Aff("Cholera", DISEASE)         // needs contaminated water
@@ -166,7 +166,8 @@ final class Catalogue {
         .rate(300).needs(CH_WATER).on(SMALL_INT).dot(50).sepsis(100).lasts(14, 14).pain(30)
         .effects(BEDRIDDEN).src("[src~] untreated CFR 10-20%"));
     static final Aff DYSENTERY = add(new Aff("Dysentery", DISEASE)     // shigella
-        .rate(1000).kids(4).needs(CH_WATER).on(COLON).dot(80).bleeds(300).lasts(5, 7).pain(40).spreads(8));
+        .rate(1000).kids(4).needs(CH_WATER).on(COLON).dot(80).bleeds(300).lasts(5, 7).pain(40).spreads(8)
+        .blood(B2_HB, -300).effects(FLUID));   // bloody stools: mostly water lost, some red cells
     static final Aff HEPA = add(new Aff("Hepatitis A", DISEASE)
         .rate(500).kids(3).needs(CH_WATER).on(LIVER).dot(60).lasts(14, 28).pain(10).spreads(5)
         .psy(PSY_ENERGY, -4000).effects(IMMUNE));
@@ -226,19 +227,20 @@ final class Catalogue {
         .onset("Deafness from infection", 10000).effects(BEDRIDDEN));
     static final Aff DEAF_INF = add(new Aff("Deafness from infection", NONE)
         .on(L_EAR).hit(8000).alsoHit(R_EAR).lasts(1, 0).effects(QUIET));
-    static final Aff WORMS = add(new Aff("Intestinal worms", DISEASE)  // [src] WHO: ~1.5 billion infected
-        .rate(5000).kids(3).risk(CH_WATER, 3).on(SMALL_INT).chronic().remits(50000)
-        .blood(B2_HB, -1500).psy(PSY_ENERGY, -1000).psy(PSY_COGNITION, -500).effects(QUIET));
+    static final Aff WORMS = add(new Aff("Roundworm infection", DISEASE)  // ascariasis; [src] WHO: ~800M infected
+        .rate(2000).kids(3).risk(CH_WATER, 3).on(SMALL_INT).chronic().remits(50000)
+        .psy(PSY_ENERGY, -500).psy(PSY_COGNITION, -500).leads("Bowel obstruction", 100).effects(QUIET)
+        .src("[src~] heavy loads stunt children and can block the gut"));
     static final Aff SCABIES = add(new Aff("Scabies", DISEASE)
         .rate(2000).spreads(15).on(SKIN).lasts(30, 60).pain(15).psy(PSY_ENERGY, -500).effects(QUIET));
     static final Aff FUNGAL = add(new Aff("Fungal skin infection", DISEASE)
         .rate(5000).spreads(5).on(SKIN).lasts(14, 28).pain(3).effects(QUIET));
-    static final Aff TRACHOMA = add(new Aff("Trachoma", DISEASE)       // [src] WHO: leading infectious cause of blindness
+    static final Aff TRACHOMA = add(new Aff("Trachoma", DISEASE).both()       // [src] WHO: leading infectious cause of blindness
         .rate(500).kids(3).needs(CH_WATER, 2).on(L_EYE, R_EYE).dot(10).lasts(30, 30).spreads(8)
         .then("Blinding eye damage", 2000));
     static final Aff BLIND_DMG = add(new Aff("Blinding eye damage", NONE)
         .on(L_EYE, R_EYE).hit(6000).dot(20).lasts(30, 60));
-    static final Aff CONJ = add(new Aff("Conjunctivitis", DISEASE)
+    static final Aff CONJ = add(new Aff("Conjunctivitis", DISEASE).both()
         .rate(2000).spreads(10).on(L_EYE, R_EYE).dot(5).lasts(3, 7).pain(10).effects(QUIET));
     static final Aff OTITIS = add(new Aff("Ear infection", DISEASE)    // otitis media
         .rate(2000).kids(20).on(L_EAR, R_EAR).dot(60).lasts(3, 7).pain(40).then("Chronic ear infection", 3000)
@@ -257,19 +259,20 @@ final class Catalogue {
     static final Aff HYPERTENSION = add(new Aff("High blood pressure", DISEASE)
         .rate(1500).doubles(15, 50).ages(18, 120).men(1.2).gene(G_CARDIO, 3).needs(CH_SALT, 2)
         .risk(CH_STRESS, 1.5).after("Chronic kidney disease", 3).on(VESSELS).chronic().sev(3000, 10000)
-        .blood(B2_BP, 40).effects(QUIET)
+        .blood(B2_BP, 40).leads("Hypertensive heart disease", 1500).effects(QUIET)
         .src("[src~] modern incidence; rare in low-salt societies (INTERSALT 1988) - see Config.SALT"));
     static final Aff MI = add(new Aff("Heart attack", DISEASE)         // [src~] 300-600/100k/yr at 65+
         .rate(60).doubles(9, 60).ages(25, 120).men(2).gene(G_CARDIO, 3)
         .risk(CH_ATHERO, 8).risk(CH_BP, 3).risk(CH_GLU, 2).risk(CH_STRESS, 1.5).risk(CH_TOBACCO, 3)
-        .on(HEART).hit(4000).dot(200).lasts(2, 7).pain(70).fatal(5000).effects(BEDRIDDEN)
-        .then("Heart failure", 20000).src("fatal(): sudden arrhythmic death, ~5% [guess]"));
+        .on(HEART).hit(4000).dot(200).lasts(2, 7).pain(70).caseFatal(25000).effects(BEDRIDDEN)
+        .then("Heart failure", 20000)
+        .src("[src~] ~25-30% die suddenly, mostly before reaching care (WHO MONICA); the rest from heart damage"));
     static final Aff AF = add(new Aff("Atrial fibrillation", DISEASE)  // [src~] ~1%/yr at 75
         .rate(150).doubles(10, 70).ages(35, 120).men(1.5).risk(CH_BP, 2)
         .after("Rheumatic heart disease", 5).after("Overactive thyroid", 3)
         .on(HEART).dot(1).chronic().psy(PSY_ENERGY, -1000).fn(FN_STAMINA, 1500));
-    static final Aff STROKE = add(new Aff("Stroke", DISEASE)           // [src] GBD 2021: 151/100k
-        .rate(60).doubles(8, 65).ages(20, 120).gene(G_CARDIO, 2).risk(CH_BP, 6).risk(CH_ATHERO, 3)
+    static final Aff STROKE = add(new Aff("Ischaemic stroke", DISEASE)  // [src~] GBD 2021: ~90/100k all strokes ~150
+        .rate(40).doubles(8, 65).ages(20, 120).gene(G_CARDIO, 2).risk(CH_BP, 6).risk(CH_ATHERO, 3)
         .risk(CH_GLU, 2).after("Atrial fibrillation", 5).after("Sickle cell disease", 20)
         .on(BRAIN).hit(3000).dot(200).lasts(3, 7).pain(5)
         .permanent(40000, ANY_LIMB).fn(FN_SPEECH, 4000).effects(BEDRIDDEN)
@@ -282,7 +285,8 @@ final class Catalogue {
         .after("Lung cancer", 4).on(L_LEG_M, R_LEG_M).dot(20).lasts(14, 28).pain(30)
         .fn(FN_MOBILITY, 2000).leads("Pulmonary embolism", 300000));
     static final Aff PE = add(new Aff("Pulmonary embolism", NONE)
-        .on(L_LUNG, R_LUNG).hit(4000).alsoHit(HEART).lasts(3, 7).pain(50).fatal(20000).effects(BEDRIDDEN));
+        .on(L_LUNG, R_LUNG).hit(4000).alsoHit(HEART).lasts(3, 7).pain(50).caseFatal(20000).effects(BEDRIDDEN)
+        .src("[src~] untreated PE mortality ~25-30% (Barritt & Jordan 1960); most deaths within hours"));
     static final Aff RHD = add(new Aff("Rheumatic heart disease", NONE)
         .on(HEART).dot(3).chronic().progress(300).sev(2000, 6000).fn(FN_STAMINA, 3000));
     static final Aff CHD_CONG = add(new Aff("Congenital heart defect", NEWBORN)  // [src] ~8 per 1000 births
@@ -304,8 +308,8 @@ final class Catalogue {
         .rate(300).kids(4).gene(G_AUTOIMM, 2).risk(CH_SMOKE, 2).on(AIRWAY).chronic().remits(3000)
         .leads("Asthma attack", 50000).fn(FN_STAMINA, 1000));
     static final Aff ASTHMA_A = add(new Aff("Asthma attack", NONE)
-        .on(AIRWAY).dot(200).alsoHit(L_LUNG).lasts(1, 2).pain(20).psy(PSY_ANXIETY, 4000).effects(BEDRIDDEN | QUIET));
-    static final Aff COPD = add(new Aff("Chronic obstructive pulmonary disease", DISEASE)
+        .on(AIRWAY).dot(200).alsoHit(L_LUNG, R_LUNG).lasts(1, 2).pain(20).psy(PSY_ANXIETY, 4000).effects(BEDRIDDEN | QUIET));
+    static final Aff COPD = add(new Aff("Chronic obstructive pulmonary disease", DISEASE).both()
         .rate(100).doubles(10, 60).ages(35, 120).needs(CH_SMOKE, 2).risk(CH_TOBACCO, 8)
         .on(L_LUNG, R_LUNG).dot(3).chronic().progress(500).sev(2000, 5000)
         .fn(FN_STAMINA, 5000).psy(PSY_ENERGY, -2000)
@@ -325,9 +329,10 @@ final class Catalogue {
         .blood(B2_GLU, 2800).psy(PSY_ENERGY, -2000)
         .src("[src] before insulin (1922) most died within 1-2 years of diagnosis"));
     static final Aff T2D = add(new Aff("Type 2 diabetes", DISEASE)     // [src~] modern 5-10/1000/yr in adults
-        .rate(300).doubles(12, 55).ages(20, 120).gene(G_METAB, 4).needs(CH_OBESE, 3).risk(CH_STRESS, 1.3)
+        .rate(30).doubles(12, 55).ages(20, 120).gene(G_METAB, 4).risk(CH_OBESE, 25).risk(CH_STRESS, 1.3)
         .after("Gestational diabetes", 5).on(PANCREAS).chronic().progress(300).sev(2000, 6000)
-        .blood(B2_GLU, 900).immuno(15).src("needs Config.OBESITY > 0 (no fat-type model yet)"));
+        .blood(B2_GLU, 900).immuno(15)
+        .src("[src~] rare but present in lean people (lean T2D); obesity multiplies it up to ~25x (Config.OBESITY)"));
     static final Aff GDM = add(new Aff("Gestational diabetes", DISEASE) // [src~] ~7% of pregnancies
         .rate(10000).needs(CH_LATEPREG).gene(G_METAB, 2).on(PANCREAS).lasts(90, 30).blood(B2_GLU, 400).effects(QUIET));
     static final Aff HYPOTHY = add(new Aff("Underactive thyroid", DISEASE)  // [src~] ~3.5/1000/yr women
@@ -364,11 +369,11 @@ final class Catalogue {
     static final Aff ULCER_P = add(new Aff("Perforated ulcer", NONE)
         .on(STOMACH).hit(3000).sepsis(400).lasts(3, 5).pain(90).effects(BEDRIDDEN));
     static final Aff GALLSTONES = add(new Aff("Gallstones", DISEASE)
-        .rate(250).women(2.5).doubles(20, 50).ages(15, 120).on(LIVER).chronic()
+        .rate(250).women(2.5).doubles(20, 50).ages(15, 120).on(GALLBLADDER).chronic()
         .leads("Biliary colic", 30000).leads("Gallbladder infection", 1000).leads("Acute pancreatitis", 200).effects(QUIET));
-    static final Aff COLIC = add(new Aff("Biliary colic", NONE).on(LIVER).lasts(1, 1).pain(70).effects(QUIET));
+    static final Aff COLIC = add(new Aff("Biliary colic", NONE).on(GALLBLADDER).lasts(1, 1).pain(70).effects(QUIET));
     static final Aff CHOLECYST = add(new Aff("Gallbladder infection", NONE)
-        .on(LIVER).dot(50).sepsis(150).lasts(5, 7).pain(70).effects(BEDRIDDEN));
+        .on(GALLBLADDER).dot(50).alsoHit(LIVER).sepsis(150).lasts(5, 7).pain(70).effects(BEDRIDDEN));
     static final Aff PANCREATITIS = add(new Aff("Acute pancreatitis", DISEASE)  // [src~] ~30/100k/yr
         .rate(10).ages(15, 120).after("Alcohol use disorder", 10).on(PANCREAS).hit(3000).dot(100).sepsis(150)
         .lasts(5, 10).pain(90).then("Chronic pancreatitis", 10000).effects(BEDRIDDEN));
@@ -378,8 +383,8 @@ final class Catalogue {
         .rate(5).ages(25, 120).after("Alcohol use disorder", 30).after("Chronic hepatitis B", 20)
         .on(LIVER).dot(6).chronic().progress(800).sev(2000, 5000).bleedx(150)
         .psy(PSY_COGNITION, -2000).psy(PSY_ENERGY, -2000).leads("Liver cancer", 1500));
-    static final Aff IBD = add(new Aff("Inflammatory bowel disease", DISEASE)   // Crohn's / colitis
-        .rate(15).peak(25, 12).gene(G_AUTOIMM, 3).on(COLON).chronic().episodes(30, 60, 180, 540)
+    static final Aff IBD = add(new Aff("Crohn's disease", DISEASE)   // [src~] ~5-10/100k/yr in the West
+        .rate(7).peak(25, 12).gene(G_AUTOIMM, 3).on(SMALL_INT).alsoHit(COLON).chronic().episodes(30, 60, 180, 540)
         .dot(30).bleeds(50).pain(40).psy(PSY_ENERGY, -3000).psy(PSY_MOOD, -1500).bmd(10));
     static final Aff COELIAC = add(new Aff("Coeliac disease", DISEASE) // [src~] ~15-20/100k/yr (needs wheat)
         .rate(15).gene(G_AUTOIMM, 3).on(SMALL_INT).dot(2).chronic().blood(B2_HB, -1000)
@@ -407,7 +412,7 @@ final class Catalogue {
         .chronic().blood(B2_BP, 15).blood(B2_HB, -1500).psy(PSY_ENERGY, -2000));
     static final Aff PSGN = add(new Aff("Post-strep kidney inflammation", NONE)
         .on(L_KIDNEY).dot(40).alsoHit(R_KIDNEY).lasts(14, 28).blood(B2_BP, 20));
-    static final Aff PKD = add(new Aff("Polycystic kidney disease", NEWBORN)  // [src~] ~1/1000 (dominant)
+    static final Aff PKD = add(new Aff("Polycystic kidney disease", NEWBORN).both()  // [src~] ~1/1000 (dominant)
         .rate(100).on(L_KIDNEY, R_KIDNEY).chronic().progress(250).sev(500, 1000).dot(8).blood(B2_BP, 20));
     static final Aff BPH = add(new Aff("Enlarged prostate", DISEASE)
         .rate(1500).menOnly().doubles(15, 60).ages(40, 120).on(PROSTATE).chronic().progress(300).sev(1000, 3000)
@@ -421,7 +426,7 @@ final class Catalogue {
     // =================================================================================
     static { section(C_BLOOD); }
     static final Aff IRON = add(new Aff("Iron-deficiency anaemia", DISEASE)  // [src] WHO: ~1/3 of women anaemic
-        .rate(2000).women(3).kids(2).risk(CH_MALNUT, 4).after("Intestinal worms", 4).risk(CH_PREGNANT, 3)
+        .rate(2000).women(3).kids(2).risk(CH_MALNUT, 4).after("Hookworm disease", 6).after("Whipworm infection", 2).risk(CH_PREGNANT, 3)
         .on(MARROW).chronic().remits(30000).blood(B2_HB, -3000).effects(QUIET));
     static final Aff SICKLE = add(new Aff("Sickle cell disease", NONE) // genotype HbSS (Genes)
         .on(SPLEEN).dot(5).chronic().blood(B2_HB, -3500).immuno(30).leads("Sickle cell crisis", 100000)
@@ -436,18 +441,18 @@ final class Catalogue {
     static final Aff JOINT_BLEED = add(new Aff("Joint bleed", NONE)
         .on(L_KNEE, R_KNEE, L_ELBOW, R_ELBOW, L_ANKLE, R_ANKLE).hit(800).bleeds(100).lasts(3, 7).pain(50)
         .effects(DISABLE | QUIET));
-    static final Aff LEUK_C = add(new Aff("Childhood leukaemia", DISEASE)  // [src~] ALL ~4/100k children
-        .rate(4).peak(4, 3).ages(0, 18).after("Down syndrome", 20).on(MARROW).chronic().progress(4000)
+    static final Aff LEUK_C = add(new Aff("Acute lymphoid leukaemia", DISEASE)  // [src~] ~4/100k children, peak 2-5
+        .rate(4).peak(4, 3).ages(0, 70).after("Down syndrome", 20).on(MARROW).chronic().progress(4000)
         .sev(500, 1500).dot(80).immuno(50).blood(B2_HB, -3000).psy(PSY_ENERGY, -3000));
-    static final Aff LEUK_A = add(new Aff("Leukaemia", DISEASE)
-        .rate(15).doubles(10, 65).ages(20, 120).on(MARROW).chronic().progress(2500).sev(500, 1500)
+    static final Aff LEUK_A = add(new Aff("Acute myeloid leukaemia", DISEASE)  // [src~] ~4/100k, median age ~68
+        .rate(5).doubles(10, 65).ages(20, 120).on(MARROW).chronic().progress(2500).sev(500, 1500)
         .dot(60).immuno(40).blood(B2_HB, -2500).psy(PSY_ENERGY, -3000));
-    static final Aff LYMPHOMA = add(new Aff("Lymphoma", DISEASE)
-        .rate(15).doubles(15, 60).on(SPLEEN).chronic().progress(2000).sev(500, 1500).dot(60).immuno(40)
+    static final Aff LYMPHOMA = add(new Aff("Non-Hodgkin lymphoma", DISEASE)  // [src~] GLOBOCAN ~6/100k
+        .rate(12).doubles(15, 60).on(LYMPH).alsoHit(SPLEEN).chronic().progress(2000).sev(500, 1500).dot(60).immuno(40)
         .psy(PSY_ENERGY, -3000));
     static final Aff MYELOMA = add(new Aff("Myeloma", DISEASE)
         .rate(10).doubles(8, 70).ages(35, 120).on(MARROW).chronic().progress(2000).sev(500, 1500).dot(40)
-        .bmd(60).immuno(30).pain(30).alsoHit(L_KIDNEY));
+        .bmd(60).immuno(30).pain(30).alsoHit(L_KIDNEY, R_KIDNEY));
 
     // =================================================================================
     //  CANCER  (rates are per 100k per year AT the reference age; roughly GLOBOCAN 2020 [src~])
@@ -468,7 +473,7 @@ final class Catalogue {
         .rate(150).menOnly().doubles(7, 70).ages(40, 120).gene(G_CANCER, 3)
         .on(PROSTATE).chronic().progress(800).sev(300, 1000).dot(30).pain(10).leads("Bone metastases", 6000));
     static final Aff COLON_CA = add(new Aff("Bowel cancer", DISEASE)
-        .rate(80).doubles(9, 65).ages(30, 120).men(1.3).gene(G_CANCER, 3).after("Inflammatory bowel disease", 3)
+        .rate(80).doubles(9, 65).ages(30, 120).men(1.3).gene(G_CANCER, 3).after("Crohn's disease", 2).after("Ulcerative colitis", 3)
         .on(COLON).chronic().progress(2000).sev(300, 1000).dot(60).bleeds(5).pain(20).leads("Liver metastases", 10000));
     static final Aff STOMACH_CA = add(new Aff("Stomach cancer", DISEASE)
         .rate(40).doubles(9, 65).ages(30, 120).men(2).gene(G_CANCER, 2).after("Stomach ulcer", 3)
@@ -498,7 +503,7 @@ final class Catalogue {
         .sev(300, 1000).dot(50).pain(15));
     static final Aff OESOPH_CA = add(new Aff("Oesophageal cancer", DISEASE)
         .rate(20).doubles(9, 65).ages(30, 120).men(2.5).after("Alcohol use disorder", 4).risk(CH_TOBACCO, 4)
-        .on(STOMACH).chronic().progress(4000).sev(300, 1000).dot(80).pain(25));
+        .on(OESOPHAGUS).chronic().progress(4000).sev(300, 1000).dot(80).pain(25));
     static final Aff THYROID_CA = add(new Aff("Thyroid cancer", DISEASE)
         .rate(10).women(3).ages(15, 120).on(THYROID).chronic().progress(300).sev(300, 1000).dot(10).effects(QUIET));
     static final Aff BRAIN_CA = add(new Aff("Brain tumour", DISEASE)
@@ -521,7 +526,7 @@ final class Catalogue {
         .on(LIVER).chronic().progress(4000).sev(1000, 3000).dot(80).pain(25).psy(PSY_ENERGY, -3000));
     static final Aff BRAIN_METS = add(new Aff("Brain metastases", NONE)
         .on(BRAIN).chronic().progress(4000).sev(1000, 3000).dot(30).psy(PSY_COGNITION, -3000));
-    static final Aff LUNG_METS = add(new Aff("Lung metastases", NONE)
+    static final Aff LUNG_METS = add(new Aff("Lung metastases", NONE).both()
         .on(L_LUNG, R_LUNG).chronic().progress(4000).sev(1000, 3000).dot(80));
 
     // =================================================================================
@@ -533,13 +538,13 @@ final class Catalogue {
     static final Aff OA = add(new Aff("Osteoarthritis", DISEASE)       // joint wear also emerges from ageing
         .rate(400).doubles(12, 60).ages(35, 120).women(1.5).risk(CH_LABOUR, 2).risk(CH_OBESE, 2)
         .on(BIG_JOINTS).dot(2).chronic().progress(500).sev(2000, 5000).pain(15));
-    static final Aff RA = add(new Aff("Rheumatoid arthritis", DISEASE) // [src~] ~40/100k/yr
+    static final Aff RA = add(new Aff("Rheumatoid arthritis", DISEASE).both() // [src~] ~40/100k/yr
         .rate(40).women(3).peak(50, 15).gene(G_AUTOIMM, 4).on(L_WRIST, R_WRIST).dot(5).chronic()
         .episodes(60, 90, 90, 180).alsoHit(L_KNEE, R_KNEE).fn(FN_MANIP, 3000).fn(FN_MOBILITY, 2000)
         .pain(30).psy(PSY_ENERGY, -2500).bmd(10));
     static final Aff AS = add(new Aff("Ankylosing spondylitis", DISEASE)
         .rate(7).men(3).ages(15, 45).gene(G_AUTOIMM, 4).on(SPINE_J).dot(2).chronic().pain(25).fn(FN_MOBILITY, 1500));
-    static final Aff LUPUS = add(new Aff("Lupus", DISEASE)             // [src~] women ~9:1
+    static final Aff LUPUS = add(new Aff("Lupus", DISEASE).both()             // [src~] women ~9:1
         .rate(5).women(9).ages(14, 50).gene(G_AUTOIMM, 5).on(L_KIDNEY, R_KIDNEY).dot(5).chronic()
         .episodes(30, 60, 180, 360).pain(25).psy(PSY_ENERGY, -3000).alsoHit(SKIN));
     static final Aff SCOLIOSIS = add(new Aff("Scoliosis", DISEASE)     // [src~] 2-3% adolescents, girls more severe
@@ -558,7 +563,7 @@ final class Catalogue {
         .chronic().src("bones at 40% strength (Bones)"));
     static final Aff ACH = add(new Aff("Achondroplasia", NONE)         // genotype
         .chronic().fn(FN_MOBILITY, 1000).on(SPINE_J).dot(1));
-    static final Aff DMD = add(new Aff("Duchenne muscular dystrophy", NONE)  // genotype, X-linked
+    static final Aff DMD = add(new Aff("Duchenne muscular dystrophy", NONE).both()  // genotype, X-linked
         .on(L_LEG_M, R_LEG_M).dot(6).alsoHit(CORE_M, HEART).chronic().fn(FN_MOBILITY, 4000)
         .src("[src] untreated: wheelchair ~12, death late teens"));
     static final Aff BACK = add(new Aff("Low back pain", DISEASE)      // [src] GBD: leading cause of disability
@@ -585,7 +590,7 @@ final class Catalogue {
     // =================================================================================
     static { section(C_NEURO); }
     static final Aff EPILEPSY = add(new Aff("Epilepsy", DISEASE)       // [src] Fiest 2017: 61/100k/yr
-        .rate(40).kids(2).gene(G_NEURODEV, 2).risk(CH_HEADINJ, 10).after("Stroke", 10).after("Meningitis", 5)
+        .rate(40).kids(2).gene(G_NEURODEV, 2).risk(CH_HEADINJ, 10).after("Ischaemic stroke", 10).after("Intracerebral haemorrhage", 10).after("Meningitis", 5)
         .after("Birth asphyxia", 5).on(BRAIN).chronic().remits(3000)
         .leads("Fall", 20000).leads("Burn", 2000).fatal(116)
         .psy(PSY_MOOD, -1000).psy(PSY_ANXIETY, 1000).psy(PSY_COGNITION, -800)
@@ -638,16 +643,16 @@ final class Catalogue {
     //  EYES & EARS  (presbyopia and age hearing loss emerge from Body ageing)
     // =================================================================================
     static { section(C_SENSE); }
-    static final Aff CATARACT = add(new Aff("Cataract", DISEASE)       // [src] WHO: leading cause of blindness
+    static final Aff CATARACT = add(new Aff("Cataract", DISEASE).both()       // [src] WHO: leading cause of blindness
         .rate(1500).doubles(8, 70).ages(40, 120).risk(CH_GLU, 2).risk(CH_SUN, 2)
         .on(L_EYE, R_EYE).dot(4).chronic().progress(1500).sev(500, 1500));
-    static final Aff GLAUCOMA = add(new Aff("Glaucoma", DISEASE)
+    static final Aff GLAUCOMA = add(new Aff("Glaucoma", DISEASE).both()
         .rate(80).doubles(10, 65).ages(35, 120).on(L_EYE, R_EYE).dot(3).chronic().progress(800).sev(500, 1500));
-    static final Aff AMD = add(new Aff("Macular degeneration", DISEASE)
+    static final Aff AMD = add(new Aff("Macular degeneration", DISEASE).both()
         .rate(100).doubles(7, 75).ages(50, 120).on(L_EYE, R_EYE).dot(3).chronic().progress(800).sev(500, 1500));
     static final Aff MYOPIA = add(new Aff("Short sight", DISEASE)      // no glasses in this world
         .rate(800).ages(6, 25).peak(12, 5).on(L_EYE).chronic().fn(FN_VISION, 1500).effects(QUIET));
-    static final Aff XEROPHTH = add(new Aff("Vitamin A blindness", DISEASE)  // [src] WHO: VAD top cause of child blindness
+    static final Aff XEROPHTH = add(new Aff("Vitamin A blindness", DISEASE).both()  // [src] WHO: VAD top cause of child blindness
         .rate(3000).ages(0, 10).needs(CH_MALNUT).on(L_EYE, R_EYE).dot(25).lasts(30, 60).immuno(20));
     static final Aff TINNITUS = add(new Aff("Tinnitus", DISEASE)
         .rate(300).doubles(20, 50).ages(15, 120).on(L_EAR, R_EAR).chronic().psy(PSY_ANXIETY, 1000)
@@ -687,7 +692,7 @@ final class Catalogue {
         .rate(2500).needs(CH_EARLYPREG).after("Pelvic inflammatory disease", 6).on(UTERUS).hit(3000).bleeds(1500)
         .lasts(2, 3).pain(80).effects(END_PREG | BEDRIDDEN));
     static final Aff PREECLAMPSIA = add(new Aff("Pre-eclampsia", DISEASE)  // [src] 2-8% of pregnancies
-        .rate(20000).needs(CH_LATEPREG).after("High blood pressure", 4).on(L_KIDNEY).dot(10).lasts(30, 60)
+        .rate(20000).needs(CH_LATEPREG).after("High blood pressure", 4).on(L_KIDNEY).dot(10).alsoHit(R_KIDNEY, LIVER).lasts(30, 60)
         .blood(B2_BP, 40).leads("Eclampsia", 20000));
     static final Aff ECLAMPSIA = add(new Aff("Eclampsia", NONE)
         .on(BRAIN).hit(2000).dot(100).lasts(2, 3).effects(BEDRIDDEN));
@@ -719,7 +724,7 @@ final class Catalogue {
         .rate(2000).needs(CH_MALNUT).on(MOUTH).dot(10).alsoHit(SKIN).bleeds(20).lasts(60, 120)
         .psy(PSY_ENERGY, -3000).psy(PSY_MOOD, -2000));
     static final Aff PELLAGRA = add(new Aff("Pellagra", DISEASE)       // niacin: dermatitis, diarrhoea, dementia [src]
-        .rate(500).needs(CH_MALNUT).on(SKIN).dot(5).alsoHit(SMALL_INT).bleeds(50).lasts(60, 120)
+        .rate(500).needs(CH_MALNUT).on(SKIN).dot(5).alsoHit(SMALL_INT).bleeds(50).lasts(60, 120).effects(FLUID)
         .psy(PSY_COGNITION, -3000).psy(PSY_REALITY, 2000));
     static final Aff BERIBERI = add(new Aff("Beriberi", DISEASE)       // thiamine
         .rate(500).needs(CH_MALNUT).on(HEART).dot(15).alsoHit(NERVES).lasts(60, 120).fn(FN_MOBILITY, 3000));
@@ -767,7 +772,7 @@ final class Catalogue {
     static final Aff FRAGILEX = add(new Aff("Fragile X syndrome", NEWBORN)  // [src~] 1/4000 M, 1/8000 F
         .rate(25).men(1).women(0.5).on(BRAIN).chronic().psy(PSY_COGNITION, -5000).psy(PSY_SOCIAL, -3000)
         .psy(PSY_ANXIETY, 2000));
-    static final Aff CF = add(new Aff("Cystic fibrosis", NONE)         // genotype
+    static final Aff CF = add(new Aff("Cystic fibrosis", NONE).both()         // genotype
         .on(L_LUNG, R_LUNG).dot(5).alsoHit(PANCREAS).chronic().progress(800).sev(2000, 5000).fert(30)
         .src("[src~] before modern care most died in childhood"));
     static final Aff PKU = add(new Aff("Phenylketonuria", NONE)        // genotype; untreated: brain damage
@@ -803,7 +808,7 @@ final class Catalogue {
         .on(BRAIN).lasts(60, 120).psy(PSY_MOOD, -6500).psy(PSY_ENERGY, -5000).psy(PSY_SOCIAL, -4000)
         .psy(PSY_IMPULSE, 1500));
     static final Aff GAD = add(new Aff("Generalised anxiety disorder", DISEASE)  // [src~] ~3% 12-month
-        .rate(700).ages(8, 120).women(2).gene(G_ANXIETY, 3).risk(CH_STRESS, 5).risk(CH_ACE, 2)
+        .rate(600).ages(8, 120).women(2).gene(G_ANXIETY, 3).risk(CH_STRESS, 4).risk(CH_ACE, 2)
         .on(BRAIN).chronic().remits(8000).psy(PSY_ANXIETY, 5000).psy(PSY_ENERGY, -1500).psy(PSY_MOOD, -1500)
         .psy(PSY_COGNITION, -1000).stress(3));
     static final Aff PANIC = add(new Aff("Panic disorder", DISEASE)
@@ -812,8 +817,8 @@ final class Catalogue {
     static final Aff SOCIAL_ANX = add(new Aff("Social anxiety disorder", DISEASE)
         .rate(400).peak(13, 5).gene(G_ANXIETY, 3).risk(CH_ACE, 2).on(BRAIN).chronic().remits(4000)
         .psy(PSY_SOCIAL, -5000).psy(PSY_ANXIETY, 3000));
-    static final Aff PHOBIA = add(new Aff("Specific phobia", DISEASE)
-        .rate(1500).kids(2).ages(3, 120).gene(G_ANXIETY, 2).on(BRAIN).chronic().remits(5000)
+    static final Aff PHOBIA = add(new Aff("Specific phobia", DISEASE)  // [src] Wardenaar 2017: ~7% lifetime
+        .rate(500).kids(2).ages(3, 120).gene(G_ANXIETY, 2).on(BRAIN).chronic().remits(5000)
         .psy(PSY_ANXIETY, 800).effects(QUIET));
     static final Aff PTSD = add(new Aff("Post-traumatic stress disorder", TRAUMA)  // [src~] ~10-20% after serious injury
         .rate(12000).women(2).gene(G_ANXIETY, 2).risk(CH_ACE, 2).risk(CH_STRESS, 2)
@@ -859,10 +864,11 @@ final class Catalogue {
         .src("[src~] heritability ~50%; ~1/3 remit within a few years"));
     static final Aff WITHDRAWAL = add(new Aff("Alcohol withdrawal", NONE)  // delirium tremens
         .on(BRAIN).dot(50).lasts(3, 4).psy(PSY_REALITY, 5000).psy(PSY_ANXIETY, 6000).leads("Epilepsy", 50000));
-    static final Aff DRUG = add(new Aff("Drug use disorder", DISEASE)  // needs opium or similar (Config.OPIATES)
+    static final Aff DRUG = add(new Aff("Opioid use disorder", DISEASE)  // needs opium or similar (Config.OPIATES)
         .rate(500).men(2).ages(12, 120).needs(CH_OPIATES).gene(G_EXTERNAL, 4).risk(CH_PAIN, 4).risk(CH_ACE, 3)
         .on(BRAIN).chronic().remits(3000).fatal(1000).psy(PSY_IMPULSE, 3000).psy(PSY_ENERGY, -2000)
-        .psy(PSY_MOOD, -2000).psy(PSY_SOCIAL, -2000).src("fatal(): overdose [guess]"));
+        .psy(PSY_MOOD, -2000).psy(PSY_SOCIAL, -2000).leads("Opioid withdrawal", 3000)
+        .src("fatal(): overdose; [src~] untreated opioid dependence ~1-2% die per year (Degenhardt 2011)"));
     static final Aff ADHD = add(new Aff("ADHD", NEWBORN)               // [src] Polanczyk 2007: ~5.3%
         .rate(3000).men(2.5).gene(G_NEURODEV, 5).risk(CH_M_ALCOHOL, 2).after("Premature birth", 2)
         .on(BRAIN).chronic().remits(4000).psy(PSY_IMPULSE, 4000).psy(PSY_COGNITION, -1000)
@@ -874,7 +880,7 @@ final class Catalogue {
         .rate(300).men(3).gene(G_NEURODEV, 4).on(BRAIN).chronic().remits(3000)
         .psy(PSY_IMPULSE, 1000).psy(PSY_SOCIAL, -1000).effects(QUIET));
     static final Aff CONDUCT = add(new Aff("Conduct disorder", DISEASE)
-        .rate(600).men(3).ages(6, 17).gene(G_EXTERNAL, 3).risk(CH_ACE, 4).after("ADHD", 3)
+        .rate(400).men(3).ages(6, 17).gene(G_EXTERNAL, 3).risk(CH_ACE, 4).after("ADHD", 3)
         .on(BRAIN).lasts(1095, 1095).psy(PSY_AGGRESSION, 4000).psy(PSY_IMPULSE, 3500).psy(PSY_SOCIAL, -1000)
         .then("Antisocial personality disorder", 40000).src("[src~] ~40% go on to adult antisocial PD"));
     static final Aff ASPD = add(new Aff("Antisocial personality disorder", NONE)
@@ -899,7 +905,7 @@ final class Catalogue {
         .psy(PSY_REALITY, 2500).psy(PSY_ANXIETY, 1500).fn(FN_SPEECH, 3000)
         .src("[src~] median survival 4-8 yr after diagnosis"));
     static final Aff VASC_DEM = add(new Aff("Vascular dementia", DISEASE)
-        .rate(250).doubles(5.3, 80).ages(45, 120).after("Stroke", 10).risk(CH_BP, 3).risk(CH_GLU, 2)
+        .rate(250).doubles(5.3, 80).ages(45, 120).after("Ischaemic stroke", 10).after("Intracerebral haemorrhage", 8).risk(CH_BP, 3).risk(CH_GLU, 2)
         .on(BRAIN).dot(6).chronic().progress(1200).sev(1500, 3000)
         .psy(PSY_COGNITION, -7000).psy(PSY_MOOD, -2000).psy(PSY_ENERGY, -2000));
     static final Aff CFS = add(new Aff("Chronic fatigue syndrome", DISEASE)
@@ -911,6 +917,9 @@ final class Catalogue {
     static final Aff ANAEMIA = add(new Aff("Anaemia", NONE).lasts(30, 0).effects(QUIET));          // Hb < 75%
     static final Aff SARCOPENIA = add(new Aff("Muscle wasting", NONE).chronic());                  // limb muscles < 50%
     static final Aff OA_LABEL = add(new Aff("Worn joints", NONE).chronic().effects(QUIET));        // any big joint < 50%
+
+    // v0.4: the rest of the GBD 2021 cause list and the DSM-5-TR (see Coverage.java)
+    static { CatalogueGbd.register(); CatalogueDsm.register(); }
 
     static { Afflictions.build(); }
 }

@@ -44,8 +44,9 @@ final class Genes {
         new Mendel("HBB-T",  "Thalassaemia major",           REC,  0.01,     0),        // [src~] regional; 1% generic
         new Mendel("COL1A1", "Brittle bone disease",         DOM,  0.00003,  0.00002),  // [src~] 1/15,000-20,000
         new Mendel("TYR",    "Albinism",                     REC,  0.0077,   0),        // [src~] 1/17,000
+        new Mendel("G6PD",   "G6PD deficiency",              XREC, Config.G6PD_Q_PERMILLE / 1000.0, 0),  // [src~] Howes 2012
     };
-    static final int M_SICKLE = 0, M_HD = 5, M_OI = 8;
+    static final int M_SICKLE = 0, M_HD = 5, M_THAL = 7, M_OI = 8, M_G6PD = 10;
     static final int NMEND = MENDEL.length;
 
     static int copies(World w, int p, int g) { return ((w.alleles[p] >>> (2 * g)) & 1) + ((w.alleles[p] >>> (2 * g + 1)) & 1); }
@@ -113,6 +114,10 @@ final class Genes {
             h.giveAff(p, Afflictions.get(MENDEL[g].condition()).id, Afflictions.SAME, -1);
             if (g == M_OI) w.boneStr[p] = 40;
         }
+        // carriers: mostly harmless, but they show up in the GBD list and some have effects
+        if (carrier(w, p, M_SICKLE)) h.giveAff(p, CatalogueGbd.SICKLE_TRAIT.id, Afflictions.SAME, -1);
+        if (carrier(w, p, M_THAL)) h.giveAff(p, CatalogueGbd.THAL_TRAIT.id, Afflictions.SAME, -1);
+        if (w.sex[p] != Config.SEX_M && carrier(w, p, M_G6PD)) h.giveAff(p, CatalogueGbd.G6PD_TRAIT.id, Afflictions.SAME, -1);
     }
 
     /** Risk multiplier for a liability byte: fold^((liab-128)/64), clamped. */

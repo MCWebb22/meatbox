@@ -21,8 +21,18 @@ v0.2 adds seasons, wild food, a shared food store, firewood heating, and what hu
 | File | What it holds | The asm section it replaces |
 |---|---|---|
 | `Config.java` | every tuning number | section 1 (`equ`s) |
-| `Body.java` | the 16 body parts: regen, vital, ageing, O2 need, pain | `part_table` |
-| `Afflictions.java` | all 24 diseases and injuries, one chain each | `aff_table` and its macros |
+| `Body.java` | v0.3: 52 body parts (organs, sense organs, glands, muscles, joints): regen, vital, ageing, O2 need, pain | `part_table` |
+| `Bones.java` | v0.3: all 206 named bones in 22 regions: strength, healing speed, spinal level | (new) |
+| `Skeleton.java` | v0.3: impacts, fractures and their complications, healing, bone density | (new) |
+| `Afflictions.java` | v0.3: the illness engine: the condition DSL, the registry and the fast rate tables | `aff_table` and its macros |
+| `Catalogue.java` | v0.3: the first 270 conditions, physical and mental, each with its sources and effects | `aff_table` |
+| `CatalogueGbd.java` | v0.4: the GBD 2021 causes the first catalogue lacked (infections, tropical, cancers, heart, injuries...) | (new) |
+| `CatalogueDsm.java` | v0.4: the DSM-5-TR disorders the first catalogue lacked | (new) |
+| `Coverage.java` | v0.4: the inclusion lists, every GBD cause and DSM disorder mapped to its conditions; writes `docs/coverage.md` | (new) |
+| `Health.java` | v0.3: running conditions each day, blood chemistry, blood pressure, immunity, the 9 body functions | (new) |
+| `Genes.java` | v0.3: inherited risk (10 polygenic families) and 11 single-gene conditions | (new) |
+| `Psych.java` | v0.3: the 8 dimensions of mind, stress, grief, suicide hazard | (new) |
+| `HealthReport.java` | v0.3: the health part of the headless report | (new) |
 | `World.java` | all state: map, people (one array per field), counters, log | `.bss`, `new_person`, `kill_person` |
 | `Sim.java` | the rules: one day, one person's day, damage, disease rolls, acting, birth | sections 7 and up |
 | `Rng.java` | the xorshift random generator | `rand32`, `rand_below` |
@@ -31,7 +41,7 @@ v0.2 adds seasons, wild food, a shared food store, firewood heating, and what hu
 | `Climate.java` | v0.2: seasonal temperature curve, growing degree days | (new) |
 | `Food.java` | v0.2: wild food on tiles, gathering, daily need, reserve size | (new) |
 
-To add an illness, add one `add(new Aff(...))` entry in `Afflictions.java`. Its id is its position in the list.
+To add an illness, add one `add(new Aff(...))` entry in `Catalogue.java`, in the section for its kind. See the section on health below.
 
 ## Proof that the port is faithful
 
@@ -45,7 +55,7 @@ Once you change any rule, the numbers will stop matching. That is expected: the 
 
 The first baseline was a copy of `asm_reference.txt`. v0.2 changed the rules, so the baseline now holds the v0.2 output.
 
-After the regression test, `ShortageTest` runs 10 other seeds for 300 years each (the tribe must never die out, and someone must starve at some point), then takes away all firewood for 5 winters (people must die of hypothermia).
+After the regression test, `CoverageTest` checks that every GBD cause and DSM disorder in `Coverage.java` names real conditions and that every condition belongs to a row. `ShortageTest` runs 10 other seeds for 300 years each (the tribe must never die out, and someone must starve at some point), then takes away all firewood for 5 winters (people must die of hypothermia).
 
 When you change a rule on purpose, the test will fail. Check that the new numbers make sense, then accept them with `test.bat --update` and commit `test/baseline.txt` together with the rule change. `asm_reference.txt` stays as the record of the original port.
 
@@ -74,3 +84,41 @@ Fertility also falls when foraging returns drop (gatherers finding under 95 % of
 **Firewood and forests.** One day of chopping gives 12 loads, and there is a 1 in 12 chance it uses up the tree tile (about 150 loads per tile). People chop while the stock is under 8 loads per person. Forests regrow: 75 % of stumps resprout as saplings (coppicing), open ground gets wind-blown seed about 2.5 % a year, and seed to mature tree takes about 16 years.
 
 **Reading the headless report.** See the comment at the top of `Headless.java` for the columns. `-Devery=1` prints every year.
+
+## Health, anatomy and illness (v0.3)
+
+Labels as above, plus `[guess]` for a number with no source behind it. A full list of the guesses and open questions is in `docs/health-model.md`.
+
+**Body.** 52 parts, each 0-100 %: brain, pituitary, spinal cord, nerves, both eyes and ears, mouth, airway, heart, vessels, both lungs, liver, stomach, small and large intestine, pancreas, spleen, both kidneys, bladder, thyroid, adrenals, gonads, uterus or prostate, breasts, skin, marrow, four limb muscles, the core (which includes the diaphragm), 12 limb joints and the spinal joints. A vital part at zero kills; a paired part (lungs, kidneys) kills only when both are gone. Each part has its own healing speed, ageing weight, oxygen need and pain weight.
+
+**Bones.** All 206 bones are named, each with a strength, a healing speed and (for vertebrae) a spinal level. A fall, blow, crush, twist or cut picks a body region and a bone. The force has a long tail, so most falls are harmless. It is compared with strength x bone density squared, and anything above that breaks the bone, with severity by how far above. Thigh and pelvis fractures bleed heavily, rib fractures can collapse a lung, skull fractures injure the brain, and a broken vertebra can injure the spinal cord below that level (paraplegia, or tetraplegia from the neck). There is no bone-setting, so bad fractures can heal crooked and the limb never fully recovers. Bone density peaks around 30, falls slowly with age, faster for women after 50, and faster with bed rest, hunger and some illnesses. Children's bones bend (they break less and heal twice as fast).
+
+**Blood.** Besides the v0.1 values, each person has haemoglobin, blood glucose, blood pressure and metabolic rate. These come from their conditions and body: anaemia cuts oxygen delivery, diabetes raises glucose, high glucose and blood pressure slowly damage vessels, kidneys, eyes and nerves, and the thyroid sets the metabolic rate.
+
+**Functions.** Each day the parts and bones are combined into 9 functions: walking, left hand, right hand, sight, hearing, stamina, thinking, speech and work capacity. The behaviour code reads these (`w.func`). The old capability bits are still set from them, so v0.1 behaviour code works unchanged.
+
+**Illnesses.** Each condition in `Catalogue.java` is one chain: how often it starts (per 100,000 people per year, by age and sex), what raises or lowers the risk (risk channels such as smoking, crowding, dirty water, hunger, cold, immobility, other conditions, genes), what it does to which part, how long it lasts, whether it is chronic, episodic or progressive, whether it spreads, what it leads to, and what it does to the mind and to the functions. Illnesses can be triggered by events instead of time: chopping, walking, giving birth, being born, losing someone, and severe injury. Rolling 270 conditions for every person every day would be slow, so the engine pre-adds the worst-case rates by age band and sex, draws once to see whether anything starts, and only then works out which condition and whether the real risk accepts it. Each person carries up to 20 conditions at once.
+
+**Mind.** 8 dimensions, rebuilt every day: mood, anxiety, energy, clarity, impulsivity, aggression, social drive and psychosis. Each comes from temperament (genes), stress, pain, disability, fever, blood chemistry, hunger, cold and every active condition. These are outputs for the behaviour code; nothing in the health code acts on them except the suicide hazard and stress. When someone dies their parents, children and siblings grieve, which can become prolonged grief or depression; children who lose a parent carry it as an adverse childhood experience.
+
+**Genes.** Ten polygenic risk families (heart, metabolic, cancer, mood, psychosis, anxiety, neurodevelopmental, addiction, autoimmune, dementia): a child gets the parents' average plus fresh noise, so risk runs in families. Eleven single-gene conditions (sickle cell, cystic fibrosis, PKU, haemophilia, Duchenne, Huntington's, achondroplasia, thalassaemia, brittle bone disease, albinism, G6PD deficiency) are inherited properly, including X-linked ones.
+
+**Environment hooks.** `Config.java` has switches for things the world does not model yet: alcohol, opiates, tobacco, indoor smoke, salt, obesity, dirty water, mosquitoes, rodents, animals, sunlight, UV and iodine. Set them to try another kind of society; later code can drive them per person.
+
+## Every disease and mental disorder (v0.4)
+
+What goes in is decided by two published lists, not by taste. The **GBD 2021 cause list** (IHME) has 305 leaf causes of illness, injury and death that together cover every ICD-10 code. The **DSM-5-TR** names every recognised mental disorder. `Coverage.java` maps each entry to the conditions that stand for it, or gives the reason there are none, and `docs/coverage.md` is generated from it. Today 292 of 305 GBD causes and 114 of 119 DSM-5-TR disorders have conditions, 550 in all. The rest are folded into other rows (for example "other leukaemia") or need a system that is not there yet: drug-resistant TB needs TB drugs, transport injuries need transport, executions need a state.
+
+"Every disease known to man" taken literally is the ICD-11 list, about 17,000 codes, most of them sub-types (which bone, which side, which organism strain). The sim models at the level where the body and the mind behave differently, and the GBD list is built at that level.
+
+**Switches for other worlds.** Many causes need a vector, a pathogen, a job or a drug the stock temperate village does not have. `Config.ENV` has 36 of them (Aedes mosquitoes, tsetse flies, freshwater snails, HIV, asbestos, cocaine, road vehicles, firearms, medicine...), all listed with their effect in `docs/coverage.md`. Turn one on and its diseases start appearing.
+
+**Organs.** Each condition names the organ it sits on and the others it damages. Bilateral diseases (COPD, cataract, glaucoma, rheumatoid arthritis, polycystic kidneys and others) hit both sides equally. Four new parts carry diseases that used to sit on a neighbour: oesophagus, gallbladder, lymph nodes and pituitary. The pituitary drives the thyroid and adrenals, so pituitary failure lowers both. The lymph nodes feed immunity.
+
+**Deaths at onset.** A heart attack, pulmonary embolism, stroke bleed, drowning or anaphylaxis can kill at onset with a published case fatality, instead of only through organ damage.
+
+**Male fertility.** Conception now uses the average fertility of the men as well, so male infertility, mumps orchitis and the like lower the birth rate.
+
+**Speed.** 550 conditions run at about 600 ns per person-day, about the same as v0.3's 270 (580 ns). Healing now visits only damaged parts, the condition loop stops after the last condition a person has, and the rare daily chances of each condition share one random draw.
+
+**Calibration.** Over 12 seeds x 300 years the suicide rate sits around 7-13 per 100,000 (WHO: about 9). Single runs swing a lot because suicides are rare in a village of 150. Prevalences were checked against published figures; the largest corrections were specific phobia (now about 5 %), agoraphobia, ARFID, Raynaud's and the worms.

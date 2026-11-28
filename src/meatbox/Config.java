@@ -25,7 +25,7 @@ final class Config {
     static final int MAP_SIZE   = MAP_W * MAP_H;
     static final int START_POP  = 40;
     static final int HP_MAX     = 10000;    // 100.00 %
-    static final int NSLOTS     = 8;        // afflictions carried at once
+    static final int NSLOTS = 20;       // conditions carried at once (chronic ones pile up with age)
     static final int USABLE_HP  = 2500;     // a part under 25 % can't be used
 
     // --- ageing --------------------------------------------------------------
@@ -165,6 +165,88 @@ final class Config {
                       T_TREE = 4, T_STUMP = 5;
 
     static final int SEX_F = 0, SEX_M = 1;
+
+    // --- health: the world around the body ([hook] = knobs for experiments) -------------
+    // Exposures a society or place sets, 0..10000. Several illnesses NEED one to exist
+    // at all (no alcohol = no alcohol use disorder). Change these to model a different
+    // place or era; the defaults are a pre-modern temperate village [guess].
+    static final int ALCOHOL       = 0;      // [hook] how available alcohol is
+    static final int OPIATES       = 0;      // [hook] opium / other addictive drugs
+    static final int TOBACCO       = 0;      // [hook] share of adults smoking tobacco
+    static final int INDOOR_SMOKE  = 4000;   // [guess] open hearths, no chimney
+    static final int SALT          = 3000;   // [hook] 5000 = modern salt intake (hypertension x1)
+    static final int OBESITY       = 0;      // [hook] until the food model tracks body fat type
+    static final int WATER_CONTAM  = 3000;   // [guess] stream water, no sewage system
+    static final int MOSQUITO      = 0;      // [hook] malaria vectors (0 = temperate)
+    static final int RODENTS       = 0;      // [hook] plague-carrying rats and fleas
+    static final int ANIMALS       = 300;    // [guess] rabid animal bites
+    static final int SUNLIGHT      = 9000;   // [guess] outdoor life: little vitamin D lack
+    static final int UV            = 4000;   // [guess] sun damage to skin and eyes
+    static final int IODINE        = 7000;   // [guess] inland soils are often iodine-poor
+    // v0.4: more exposures, one per vector, pathogen or substance that some illness NEEDS.
+    // 0 = absent from this world. They are read through Health.CH_* = CH_ENV + E_*.
+    static final int E_AEDES = 0, E_SANDFLY = 1, E_TSETSE = 2, E_TRIATOMINE = 3, E_SNAILS = 4, E_PIGS = 5,
+        E_DOGS_SHEEP = 6, E_BLACKFLY = 7, E_CULEX = 8, E_RAW_FISH = 9, E_COPEPODS = 10, E_SNAKES = 11,
+        E_DEEP_WATER = 12, E_SILICA = 13, E_COAL_DUST = 14, E_ASBESTOS = 15, E_COCAINE = 16,
+        E_AMPHETAMINE = 17, E_CANNABIS = 18, E_HALLUCINOGENS = 19, E_SEDATIVES = 20, E_INHALANTS = 21,
+        E_CAFFEINE = 22, E_GAMBLING = 23, E_HIV = 24, E_EBOLA = 25, E_SARS_COV_2 = 26, E_BLOOD_BORNE = 27,
+        E_TICKS = 28, E_LIVESTOCK = 29, E_VEHICLES = 30, E_FIREARMS = 31, E_ELECTRICITY = 32, E_MEDICINE = 33,
+        E_FILARIA = 34, E_YAWS = 35;
+    static final int NENV = 36;
+    static final int[] ENV = new int[NENV];
+    static final String[] ENV_NAME = new String[NENV];
+    static {
+        env(E_AEDES, 0, "Aedes mosquitoes: dengue, yellow fever, Zika (tropics)");
+        env(E_SANDFLY, 0, "sandflies: leishmaniasis");
+        env(E_TSETSE, 0, "tsetse flies: sleeping sickness (Africa)");
+        env(E_TRIATOMINE, 0, "kissing bugs: Chagas disease (Americas)");
+        env(E_SNAILS, 0, "freshwater snails: schistosomiasis");
+        env(E_PIGS, 0, "free-roaming pigs: cysticercosis");
+        env(E_DOGS_SHEEP, 2000, "dogs and sheep together: hydatid disease [guess]");
+        env(E_BLACKFLY, 0, "blackflies by fast rivers: river blindness");
+        env(E_CULEX, 1000, "Culex mosquitoes: filariasis, viral encephalitis [guess]");
+        env(E_RAW_FISH, 0, "raw freshwater fish or plants: liver flukes");
+        env(E_COPEPODS, 0, "stagnant drinking ponds with water fleas: guinea worm");
+        env(E_SNAKES, 1000, "venomous snakes, scorpions, bees [guess]");
+        env(E_DEEP_WATER, 2000, "rivers and lakes to drown in [guess]");
+        env(E_SILICA, 0, "quarrying and stone dust");
+        env(E_COAL_DUST, 0, "coal mining");
+        env(E_ASBESTOS, 0, "asbestos");
+        env(E_COCAINE, 0, "cocaine or coca");
+        env(E_AMPHETAMINE, 0, "amphetamines");
+        env(E_CANNABIS, 0, "cannabis");
+        env(E_HALLUCINOGENS, 300, "hallucinogens (wild mushrooms) [guess]");
+        env(E_SEDATIVES, 0, "sedatives and sleeping pills");
+        env(E_INHALANTS, 0, "solvents, glue, petrol");
+        env(E_CAFFEINE, 0, "coffee, tea");
+        env(E_GAMBLING, 1000, "games of chance with stakes [guess]");
+        env(E_HIV, 0, "HIV present in the population");
+        env(E_EBOLA, 0, "Ebola in local wildlife");
+        env(E_SARS_COV_2, 0, "COVID-19 virus circulating");
+        env(E_BLOOD_BORNE, 300, "blood contact: scarification, shared blades, tattooing [guess]");
+        env(E_TICKS, 1000, "ticks: tick-borne encephalitis and other infections [guess]");
+        env(E_LIVESTOCK, 2000, "large animals to kick, gore or crush [guess]");
+        env(E_VEHICLES, 0, "road vehicles");
+        env(E_FIREARMS, 0, "firearms");
+        env(E_ELECTRICITY, 0, "mains electricity");
+        env(E_FILARIA, 0, "filarial worms carried by local mosquitoes (tropics)");
+        env(E_YAWS, 0, "yaws bacterium (humid tropics)");
+        env(E_MEDICINE, 0, "medical treatment (none yet: its side effects need it to exist)");
+    }
+    private static void env(int i, int v, String name) { ENV[i] = v; ENV_NAME[i] = name; }
+    static final int SEX_ACTIVE_MIN = 16, SEX_ACTIVE_MAX = 50;
+    static final int SICKLE_Q_PERMILLE = 0;  // [hook] HbS allele frequency; ~100+ where malaria is endemic
+    static final int G6PD_Q_PERMILLE = 5;    // [hook] [src~] ~0.5% of X chromosomes in Europe; 5-20% where malaria was endemic
+
+    // --- health: thresholds and rates [tune unless marked] -------------------------------
+    static final int STRESS_DECAY_SH  = 7;    // stress load falls by 1/128 a day (half-life ~3 months)
+    static final int SUICIDE_BASE     = 390; // per 100k per year at the worst mood [tune]
+    static final int SUICIDE_MOOD     = -4000;// below this mood, risk starts
+    static final int OSTEO_BMD        = 7000; // [src] WHO: T-score -2.5 ~ 25-30% below peak
+    static final int HB_ANAEMIA       = 7500; // Hb under 75% of normal (~10.5 g/dL)
+    static final int GLU_DAMAGE       = 800;  // [src~] above ~8 mmol/L glucose slowly damages vessels
+    static final int GLU_COMA         = 3000; // [src~] ~30 mmol/L: diabetic ketoacidosis
+    static final int BP_DAMAGE        = 140;  // [src] systolic 140+ = hypertension (WHO)
 
     // --- display -------------------------------------------------------------------------
     static final int   FRAME_MS = 50;

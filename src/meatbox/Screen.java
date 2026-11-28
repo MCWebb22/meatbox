@@ -239,79 +239,124 @@ final class Screen extends JPanel {
 
         at(4, PANEL_COL);
         put("Blood ");          pctGood(b[bb + B_VOL]);
-        put("  SpO2 ");         pctGood(b[bb + B_O2]);
-        put("  O2 to tissue "); pctGood(b[bb + B_PERF]);
-        put("  HR " + (int) b[bb + B_HR]);
+        put(" SpO2 ");          pctGood(b[bb + B_O2]);
+        put(" O2 to tissue ");  pctGood(b[bb + B_PERF]);
+        put(" HR " + (int) b[bb + B_HR]);
 
         at(5, PANEL_COL);
         int t = b[bb + B_TEMP];
-        put("Temp " + t / 100 + "." + (t % 100) / 10 + "C  Infection ");
+        put("Temp " + t / 100 + "." + (t % 100) / 10 + "C Infect ");
         pctBad(b[bb + B_PATH]);
-        put("  Toxins ");  pctBad(b[bb + B_WASTE]);
-        put("  Pain ");    pctBad(b[bb + B_PAIN]);
+        put(" Toxins ");  pctBad(b[bb + B_WASTE]);
+        put(" Pain ");    pctBad(b[bb + B_PAIN]);
 
         at(6, PANEL_COL);
-        put("Body", WHITE);
-        put("  Food reserve "); pctGood(w.fat[p]);
-        put("  Warmth ");       pctGood(w.warmth[p]);
-        put("  (red = unusable)", GRAY);
-        for (int r = 0; r < 8; r++) {
-            at(7 + r, PANEL_COL);       partLine(p, r);
-            at(7 + r, PANEL_COL + 27);  partLine(p, r + 8);
-        }
+        int b2 = p * 4;
+        put("Hb ");  pctGood(w.blood2[b2 + B2_HB]);
+        int g = w.blood2[b2 + B2_GLU];
+        put(" Glu " + g / 100 + "." + (g % 100) / 10, g > 1100 || g < 350 ? RED : g > 750 ? YELLOW : GREEN);
+        int bp = w.blood2[b2 + B2_BP];
+        put(" BP " + bp, bp >= 160 || bp < 80 ? RED : bp >= 140 ? YELLOW : GREEN);
+        put(" Food ");   pctGood(w.fat[p]);
+        put(" Warm ");   pctGood(w.warmth[p]);
 
-        at(15, PANEL_COL);
-        put("Afflictions", WHITE);
+        at(7, PANEL_COL);
+        int fb = p * NFN;
+        String[] fl = {"Walk", "LH", "RH", "Eyes", "Ears", "Stam", "Work"};
+        int[] fi = {FN_MOBILITY, FN_MANIP_L, FN_MANIP_R, FN_VISION, FN_HEARING, FN_STAMINA, FN_WORK};
+        for (int i = 0; i < fl.length; i++) { put(fl[i] + " "); pctShort(w.func[fb + fi[i]]); put(" "); }
+
+        at(8, PANEL_COL);
+        int pb = p * NPSY;
+        int mood = w.psy[pb + PSY_MOOD];
+        put("Mood " + mood / 100, mood < -4000 ? BRED : mood < 0 ? YELLOW : GREEN);
+        put(" Anx " + w.psy[pb + PSY_ANXIETY] / 100);
+        put(" Energy " + w.psy[pb + PSY_ENERGY] / 100);
+        put(" Aggr " + w.psy[pb + PSY_AGGRESSION] / 100);
+        int re = w.psy[pb + PSY_REALITY];
+        if (re > 3000) put(" PSYCHOSIS", BRED);
+        put(" Stress " + w.stress[p] / 100, w.stress[p] > 5000 ? RED : FG);
+
+        at(9, PANEL_COL);
+        put("Body %", WHITE);
+        put("  (red = can't be used today)", GRAY);
+        for (int r = 0; r < 9; r++)
+            for (int c = 0; c < 6; c++) {
+                int part = c * 9 + r;
+                if (part >= NPARTS) continue;
+                at(10 + r, PANEL_COL + c * 9);
+                partCell(p, part);
+            }
+
+        at(19, PANEL_COL);
+        int dens = w.bmd[p];
+        put("Bones: density "); put(dens / 100 + "%", dens < Config.OSTEO_BMD ? RED : dens < 8500 ? YELLOW : GREEN);
+        int shown = 0;
+        int base = p * Bones.NBONES;
+        for (int bn = 0; bn < Bones.NBONES && shown < 2; bn++) {
+            int v = w.bone[base + bn];
+            if (v >= HP_MAX) continue;
+            put(shown == 0 ? "  broken: " : ", ");
+            put(Bones.name(bn) + " " + v / 100 + "%", v < 5000 ? RED : YELLOW);
+            shown++;
+        }
+        if (w.boneHurt[p] > 2) put(" +" + (w.boneHurt[p] - 2));
+
+        at(20, PANEL_COL);
+        put("Conditions", WHITE);
+        put(" (" + w.affN[p] + ")");
         int lines = 0;
         for (int s = 0; s < NSLOTS && lines < 4; s++) {
-            int v = w.aff[p * NSLOTS + s];
-            if ((v & 0xFF) == 0) continue;
-            Afflictions.Aff a = Afflictions.TABLE[v & 0xFF];
-            at(16 + lines, PANEL_COL);
-            pad(a.name, 17);
-            put("on ");
-            pad(Body.name((v >>> 8) & 0xFF), 10);
-            num(v >>> 16, 5);
-            put(a.has(Afflictions.CHRONIC) ? "d so far (chronic)" : "d left");
+            int id = w.affId[p * NSLOTS + s];
+            if (id == 0) continue;
+            Afflictions.Aff a = Afflictions.TABLE[id];
+            int part = w.affPart[p * NSLOTS + s];
+            int sv = w.affSev[p * NSLOTS + s];
+            at(21 + lines, PANEL_COL);
+            String nm = a.name.length() > 26 ? a.name.substring(0, 26) : a.name;
+            pad(nm, 27, a.cat == Afflictions.C_MENTAL ? BMAG : a.cat == Afflictions.C_CANCER ? RED : FG);
+            String site = a.has(Afflictions.ON_BONE) ? Bones.name(part) : Body.PARTS[part].abbr();
+            pad(site.length() > 12 ? site.substring(0, 12) : site, 13);
+            if ((sv & 0x8000) != 0) put("dormant", GRAY);
+            else if (a.has(Afflictions.CHRONIC) || a.episodic()) put("sev " + (sv & 0x7FFF) / 100 + "%");
+            else put((int) w.affDays[p * NSLOTS + s] + "d left");
             lines++;
         }
-        if (lines == 0) { at(16, PANEL_COL); put("none", GREEN); }
+        if (lines == 0) { at(21, PANEL_COL); put("none", GREEN); }
         causes();
     }
 
-    /** "Lungs     [######--]  75%"  - name in red if the part can't be used today. */
-    void partLine(int p, int part) {
-        boolean usable = ((w.cap[p] >>> part) & 1) != 0;
-        pad(Body.name(part), 10);
-        if (!usable) for (int i = cc - 10; i < cc; i++) col[cr][i] = RED;
-        if (((w.lame[p] >>> part) & 1) != 0) { put("[DISABLED]    ", RED); return; }
+    /** "Brai 99" - red name if the part can't be used today, grey if lost/absent. */
+    void partCell(int p, int part) {
         int h = w.hp[p * NPARTS + part];
-        if (h == 0) { put("[  LOST  ]    ", GRAY); return; }
+        boolean lame = ((w.lame[p] >>> part) & 1) != 0;
+        String ab = Body.PARTS[part].abbr();
+        if (h == 0) { put(ab + "  --", GRAY); return; }
+        put(ab, lame ? RED : FG);
         Color c = h >= 6667 ? GREEN : h >= 3334 ? YELLOW : RED;
-        int filled = (h * 8 + HP_MAX - 1) / HP_MAX;             // round up
-        StringBuilder bar = new StringBuilder("[");
-        for (int i = 0; i < 8; i++) bar.append(i < filled ? '#' : '-');
-        put(bar.append(']').toString(), c);
-        num(h / 100, 4);
-        put("%");
+        String n = String.valueOf(h / 100);
+        put(" ".repeat(4 - Math.min(3, n.length())) + n, c);
     }
 
-    /** Top 5 causes of death so far. */
+    /** One line: the top causes of death so far. */
     void causes() {
-        at(20, PANEL_COL);
-        put("Causes of death", WHITE);
-        long used = 0;
-        for (int row = 0; row < 5; row++) {
+        at(25, PANEL_COL);
+        put("Top deaths: ", WHITE);
+        boolean[] used = new boolean[Afflictions.COUNT];
+        for (int row = 0; row < 3; row++) {
             int best = -1, bestN = 0;
             for (int id = 0; id < Afflictions.COUNT; id++)
-                if (((used >>> id) & 1) == 0 && w.causeCount[id] > bestN) { bestN = w.causeCount[id]; best = id; }
+                if (!used[id] && w.causeCount[id] > bestN) { bestN = w.causeCount[id]; best = id; }
             if (best == -1) break;
-            used |= 1L << best;
-            at(21 + row, PANEL_COL);
-            pad(Afflictions.TABLE[best].name, 18);
-            num(bestN, 5);
+            used[best] = true;
+            String nm = Afflictions.TABLE[best].name;
+            if (nm.length() > 11) nm = nm.substring(0, 11);
+            put(nm + " " + bestN + (row < 2 ? ", " : ""));
         }
     }
+
+    void pad(String s, int width, Color c) { put(s, c); for (int i = s.length(); i < width; i++) put(" "); }
+    void pctShort(int v) { put(String.valueOf(v / 100), v >= 7000 ? GREEN : v >= 3000 ? YELLOW : RED); }
 
     int b(int p, int slot) { return w.blood[p * 8 + slot]; }
 
@@ -352,7 +397,7 @@ final class Screen extends JPanel {
         Screen s = new Screen(w, sim);
         // pick someone with afflictions so the panel shows something
         for (int p = 0; p < w.popHi; p++)
-            if (w.alive[p] && w.aff[p * NSLOTS] != 0) { s.sel = p; break; }
+            if (w.alive[p] && w.affN[p] >= 3) { s.sel = p; break; }
         s.build();
         Dimension d = s.getPreferredSize();
         s.setSize(d);

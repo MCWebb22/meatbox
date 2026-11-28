@@ -66,11 +66,13 @@ final class Headless {
            .append(w.adultDeaths == 0 ? 0 : w.adultAgeSum / w.adultDeaths).append('\n');
         sb.append(String.format("deaths by season:  winter %d  spring %d  summer %d  autumn %d%n",
                 w.seasonDeaths[0], w.seasonDeaths[1], w.seasonDeaths[2], w.seasonDeaths[3]));
-        sb.append("causes of death:\n");
+        sb.append("causes of death:                       deaths  under-15  mean age\n");
         for (int id = 0; id < Afflictions.COUNT; id++) {
             int n = w.causeCount[id];
-            if (n != 0) sb.append(String.format("  %-20s%6d%n", Afflictions.TABLE[id].name, n));
+            if (n != 0) sb.append(String.format("  %-36s%6d  %8d  %8d%n", Afflictions.TABLE[id].name, n,
+                    w.causeKids[id], w.causeAgeSum[id] / n));
         }
+        HealthReport.append(w, sb);
         int aliveFlags = 0;
         for (int i = 0; i < w.popHi; i++) if (w.alive[i]) aliveFlags++;
         if (aliveFlags != w.popCount) sb.append("INVARIANT FAILED: alive flags != pop_count\n");

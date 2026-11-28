@@ -7,6 +7,8 @@ java -cp out-test meatbox.RegressionTest %*
 if errorlevel 1 exit /b 1
 if "%1"=="--update" exit /b 0
 java -cp out-test meatbox.ShortageTest
+if errorlevel 1 exit /b 1
+java -cp out-test meatbox.CoverageTest
 exit /b %errorlevel%
 :fail
 echo BUILD FAILED
